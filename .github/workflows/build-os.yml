@@ -176,8 +176,12 @@ jobs:
 
           echo 'APT_INDICES="false"' >> config/chroot
 
+          if [ -f /usr/lib/live/build/lb_chroot_linux-image ]; then
+            sudo sed -i 's|Contents-${_ARCHITECTURE}.gz|Packages.gz|g' /usr/lib/live/build/lb_chroot_linux-image || true
+          fi
+
           cat << 'EOF' > config/package-lists/perry.list.chroot
-          xorg openbox lxterminal pcmanfm tint2 mousepad chromium python3 python3-tk espeak-ng lightdm sudo
+          linux-image-amd64 xorg openbox lxterminal pcmanfm tint2 mousepad chromium python3 python3-tk espeak-ng lightdm sudo
           EOF
 
           cat << 'PYEOF' > config/includes.chroot_after_packages/usr/local/bin/yonata-welcome.py
@@ -387,6 +391,15 @@ jobs:
         with:
           path: release-assets
           merge-multiple: true
+
+      - name: Comprimir imágenes (.img -> .img.gz) para cumplir límite de 2 GB
+        if: hashFiles('release-assets/*') != ''
+        run: |
+          shopt -s nullglob
+          for f in release-assets/*.img; do
+            gzip -9 -f "$f"
+          done
+          ls -lh release-assets/
 
       - name: Publicar en Release (latest)
         if: hashFiles('release-assets/*') != ''
