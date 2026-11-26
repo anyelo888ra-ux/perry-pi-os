@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Perry Pi OS - Sistema Operativo Ligero & Web</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 40px; text-align: center; }
+    .card { max-width: 720px; margin: auto; background: #1e293b; padding: 35px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.4); }
+    h1 { color: #38bdf8; margin-bottom: 10px; }
+    .badge { background: #0284c7; padding: 4px 12px; border-radius: 99px; font-size: 13px; }
+    .btns { display: flex; gap: 15px; justify-content: center; margin-top: 30px; flex-wrap: wrap; }
+    a.btn { text-decoration: none; padding: 14px 24px; border-radius: 10px; font-weight: bold; transition: 0.2s; }
+    .btn-primary { background: #10b981; color: #fff; }
+    .btn-primary:hover { background: #059669; }
+    .btn-secondary { background: #3b82f6; color: #fff; }
+    .btn-secondary:hover { background: #2563eb; }
+    ul { text-align: left; max-width: 480px; margin: 25px auto; line-height: 1.7; color: #cbd5e1; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <span class="badge">v1.0 Web & Local Edition</span>
+    <h1>🍓 Perry Pi OS</h1>
+    <p>Entorno ligero inspirado en Raspberry Pi OS con arranque estilo consola, MicroPython, Python 3 y escritorio rápido.</p>
+    <ul>
+      <li><b>Arranque clásico en texto:</b> Visualiza el kernel y servicios cargando en consola antes del escritorio.</li>
+      <li><b>Listo para programar:</b> Incluye MicroPython, Python 3, LXTerminal y navegador web ligero.</li>
+      <li><b>Multiplataforma:</b> Ejecútalo directo en tu navegador o descárgalo preinstalado para VMware y VirtualBox.</li>
+    </ul>
+    <div class="btns">
+      <a href="demo.html" class="btn btn-primary">🚀 Probar Perry Pi OS en el Navegador</a>
+      <a href="perry-pi-os-web.img" download class="btn btn-secondary">💾 Descargar Imagen Preinstalada (.img)</a>
+    </div>
+  </div>
+</body>
+</html>

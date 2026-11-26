@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Perry Pi OS - Live Web Emulator</title>
+  <style>
+    body { margin: 0; background: #000; color: #fff; font-family: monospace; display: flex; flex-direction: column; height: 100vh; }
+    header { background: #1e293b; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; }
+    button { background: #38bdf8; border: none; padding: 6px 14px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+    #screen_container { flex: 1; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+    canvas { max-width: 100%; max-height: 100%; }
+  </style>
+  <script src="libv86.js"></script>
+</head>
+<body>
+  <header>
+    <div><strong>🍓 Perry Pi OS</strong> | Usuario: <code>perry</code> | Clave: <code>perry</code></div>
+    <div>
+      <button onclick="emulator.restart()">Reiniciar</button>
+      <button onclick="document.getElementById('screen_container').requestFullscreen()">Pantalla Completa</button>
+    </div>
+  </header>
+  <div id="screen_container">
+    <div style="white-space: pre; font: 14px monospace; line-height: 14px"></div>
+    <canvas style="display:none"></canvas>
+  </div>
+  <script>
+    window.onload = function() {
+      window.emulator = new V86({
+        wasm_path: "v86.wasm",
+        memory_size: 256 * 1024 * 1024,
+        vga_memory_size: 16 * 1024 * 1024,
+        screen_container: document.getElementById("screen_container"),
+        bios: { url: "seabios.bin" },
+        vga_bios: { url: "vgabios.bin" },
+        hda: { url: "perry-pi-os-web.img", async: true, size: 1258291200 },
+        autostart: true
+      });
+    };
+  </script>
+</body>
+</html>
