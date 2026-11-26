@@ -22,71 +22,94 @@ jobs:
       - name: Instalar herramientas
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq debootstrap debian-archive-keyring grub-pc-bin parted dosfstools
+          sudo apt-get install -y -qq debootstrap debian-archive-keyring grub-pc-bin parted dosfstools e2fsprogs
 
       - name: Construir perry-pi-os-web.img
         run: |
-          set -e
-          dd if=/dev/zero of=perry-pi-os-web.img bs=1M count=2400 status=none
-          parted -s perry-pi-os-web.img mklabel msdos
-          parted -s perry-pi-os-web.img mkpart primary ext4 1MiB 100%
-          parted -s perry-pi-os-web.img set 1 boot on
+          set -euo pipefail
+          IMG="perry-pi-os-web.img"
+          dd if=/dev/zero of="$IMG" bs=1M count=2400 status=none
+          parted -s "$IMG" mklabel msdos
+          parted -s "$IMG" mkpart primary ext4 1MiB 100%
+          parted -s "$IMG" set 1 boot on
 
-          LOOP_DEV=$(sudo losetup --find --show --partscan perry-pi-os-web.img)
+          LOOP_DEV=$(sudo losetup --find --show --partscan "$IMG")
           PART_DEV="${LOOP_DEV}p1"
-          sudo mkfs.ext4 -F "$PART_DEV"
+          sudo mkfs.ext4 -F -L "PERRY_WEB32" "$PART_DEV"
 
           mkdir -p mnt
           sudo mount "$PART_DEV" mnt
+
           sudo debootstrap --arch=i386 --variant=minbase bookworm mnt http://deb.debian.org/debian
 
-          sudo mount --bind /dev mnt/dev
-          sudo mount --bind /dev/pts mnt/dev/pts
-          sudo mount --bind /proc mnt/proc
-          sudo mount --bind /sys mnt/sys
-          sudo mount --bind /run mnt/run
+          for d in dev dev/pts proc sys run; do
+            sudo mount --bind "/$d" "mnt/$d"
+          done
 
           cat << 'PYEOF' > yonata.py
           import tkinter as tk
           from tkinter import ttk
-          import subprocess, threading, platform, os
+          import subprocess, threading, platform, os, shutil
 
           FLAG = os.path.expanduser("~/.perry_welcome_done")
 
           def hablar(t):
-              threading.Thread(
-                  target=lambda: subprocess.run(["espeak-ng", "-v", "es", "-s", "145", t], check=False),
-                  daemon=True
-              ).start()
+              if shutil.which("espeak-ng"):
+                  threading.Thread(
+                      target=lambda: subprocess.run(["espeak-ng", "-v", "es", "-s", "145", t], check=False),
+                      daemon=True
+                  ).start()
 
           class Yonata:
               def __init__(self, r):
                   self.r = r
                   r.title("Yonata - Asistente Oficial Perry Pi OS")
-                  r.geometry("540x400")
+                  r.geometry("560x420")
                   r.configure(bg="#0f172a")
-                  tk.Label(r, text="Hola, soy Yonata", font=("Sans", 18, "bold"), fg="#38bdf8", bg="#0f172a").pack(pady=(35, 10))
-                  self.desc = tk.Label(r, text="Asistente oficial de Perry Pi OS listo.", font=("Sans", 11), fg="#e2e8f0", bg="#0f172a")
-                  self.desc.pack(pady=10)
-                  self.pb = ttk.Progressbar(r, length=380, mode="determinate")
-                  self.pb.pack(pady=15)
-                  self.btn = tk.Button(
-                      r, text="Verificar Sistema", bg="#10b981", fg="#fff",
-                      font=("Sans", 11, "bold"), relief="flat", padx=20, pady=8, command=self.run
+                  tk.Label(
+                      r, text="Hola, soy Yonata",
+                      font=("Sans", 19, "bold"), fg="#38bdf8", bg="#0f172a"
+                  ).pack(pady=(28, 6))
+                  tk.Label(
+                      r, text="Perry Pi OS • Usuario: perry",
+                      font=("Sans", 9), fg="#94a3b8", bg="#0f172a"
+                  ).pack()
+                  self.desc = tk.Label(
+                      r, text="Asistente oficial de Perry Pi OS listo.",
+                      font=("Sans", 11), fg="#e2e8f0", bg="#0f172a", wraplength=500
                   )
-                  self.btn.pack(pady=10)
+                  self.desc.pack(pady=14)
+                  self.pb = ttk.Progressbar(r, length=400, mode="determinate")
+                  self.pb.pack(pady=12)
+
+                  btn_frame = tk.Frame(r, bg="#0f172a")
+                  btn_frame.pack(pady=10)
+
+                  self.btn = tk.Button(
+                      btn_frame, text="Verificar Sistema", bg="#10b981", fg="#fff",
+                      font=("Sans", 10, "bold"), relief="flat", padx=16, pady=8, command=self.run
+                  )
+                  self.btn.pack(side="left", padx=6)
+
+                  self.term_btn = tk.Button(
+                      btn_frame, text="Abrir Terminal", bg="#334155", fg="#fff",
+                      font=("Sans", 10, "bold"), relief="flat", padx=14, pady=8,
+                      command=lambda: subprocess.Popen(["lxterminal"], start_new_session=True)
+                  )
+                  self.term_btn.pack(side="left", padx=6)
+
                   r.after(500, lambda: hablar("Hola, soy Yonata, tu asistente oficial de Perry Pi OS."))
 
               def run(self):
                   self.btn.config(state="disabled")
-                  self.desc.config(text=f"Arquitectura: {platform.machine()} | Navegador, Notepad y Yonata listos.")
+                  self.desc.config(text=f"Arquitectura: {platform.machine()} | Navegador, Editor, Calculadora y Yonata listos.")
                   hablar("Verificando entorno base de Perry Pi OS.")
-                  self.pb["value"] = 60
-                  self.r.after(1500, self.done)
+                  self.pb["value"] = 65
+                  self.r.after(1200, self.done)
 
               def done(self):
                   self.pb["value"] = 100
-                  self.desc.config(text="¡Perry Pi OS listo! Puedes instalar lo que elijas desde terminal.")
+                  self.desc.config(text="¡Perry Pi OS listo! Puedes abrir apps desde la barra o terminal.")
                   hablar("Todo está listo. Bienvenido a Perry Pi OS.")
                   with open(FLAG, "w", encoding="utf-8") as f:
                       f.write("ok")
@@ -101,7 +124,7 @@ jobs:
           sudo cp yonata.py mnt/usr/local/bin/yonata-welcome.py
 
           sudo chroot mnt /bin/bash -s "$LOOP_DEV" << 'CHROOTEOF'
-          set -e
+          set -euo pipefail
           export DEBIAN_FRONTEND=noninteractive
           LOOP_DEV="$1"
 
@@ -113,28 +136,65 @@ jobs:
           apt-get clean
           apt-get install -y -qq --no-install-recommends \
             grub-pc xorg openbox lxterminal pcmanfm tint2 mousepad netsurf-gtk \
-            python3 python3-tk espeak-ng lightdm sudo ca-certificates
+            galculator viewnior htop \
+            python3 python3-tk espeak-ng lightdm sudo ca-certificates dbus-x11
 
-          sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=""/' /etc/default/grub
+          sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT="console=ttyS0,115200 console=tty0"/' /etc/default/grub
           sed -i 's/GRUB_TIMEOUT=.*/GRUB_TIMEOUT=1/' /etc/default/grub
 
           id -u perry >/dev/null 2>&1 || useradd -m -s /bin/bash -G sudo perry
           echo "perry:perry" | chpasswd
           echo "root:perry" | chpasswd
 
-          mkdir -p /etc/lightdm/lightdm.conf.d /home/perry/.config/openbox
+          mkdir -p /etc/lightdm/lightdm.conf.d /home/perry/.config/openbox /home/perry/Desktop
           printf '[Seat:*]\nautologin-user=perry\nautologin-user-timeout=0\n' > /etc/lightdm/lightdm.conf.d/autologin.conf
-          printf 'tint2 &\n[ ! -f "$HOME/.perry_welcome_done" ] && python3 /usr/local/bin/yonata-welcome.py &\n' > /home/perry/.config/openbox/autostart
-          chmod +x /usr/local/bin/yonata-welcome.py
-          chown -R perry:perry /home/perry/.config
+
+          cat << 'AUTOEOF' > /home/perry/.config/openbox/autostart
+          tint2 &
+          if [ ! -f "$HOME/.perry_welcome_done" ]; then
+            python3 /usr/local/bin/yonata-welcome.py &
+          fi
+          AUTOEOF
+
+          cat << 'DESKEOF' > /home/perry/Desktop/Yonata.desktop
+          [Desktop Entry]
+          Type=Application
+          Name=Yonata Asistente
+          Exec=python3 /usr/local/bin/yonata-welcome.py
+          Icon=utilities-terminal
+          Terminal=false
+          DESKEOF
+
+          chmod +x /usr/local/bin/yonata-welcome.py /home/perry/Desktop/Yonata.desktop
+          chown -R perry:perry /home/perry
 
           grub-install --target=i386-pc --boot-directory=/boot "$LOOP_DEV"
           update-grub
+
+          UUID=$(blkid -s UUID -o value "$PART_DEV")
+          if [ -n "$UUID" ] && [ ! -s /boot/grub/grub.cfg ]; then
+            cat << GRUBEOF > /boot/grub/grub.cfg
+          set default=0
+          set timeout=1
+          serial --unit=0 --speed=115200
+          terminal_input serial console
+          terminal_output serial console
+          menuentry "Perry Pi OS (Web 32-bit)" {
+              search --no-floppy --fs-uuid --set=root $UUID
+              linux /boot/vmlinuz-6.1.0-50-686 root=UUID=$UUID ro console=ttyS0,115200 console=tty0
+              initrd /boot/initrd.img-6.1.0-50-686
+          }
+          GRUBEOF
+          fi
+
           apt-get clean
           rm -rf /var/lib/apt/lists/*
           CHROOTEOF
 
-          sudo umount -lf mnt/dev/pts mnt/dev mnt/proc mnt/sys mnt/run mnt 2>/dev/null || true
+          for d in run sys proc dev/pts dev; do
+            sudo umount -lf "mnt/$d" 2>/dev/null || true
+          done
+          sudo umount -lf mnt 2>/dev/null || true
           sudo losetup -d "$LOOP_DEV"
 
       - name: Subir artefacto Web 32-bit
@@ -144,7 +204,7 @@ jobs:
           path: perry-pi-os-web.img
 
   build-iso-64bit:
-    name: 2. Compilar Local ISO 64-bit (amd64 + Chromium + Notepad + Yonata)
+    name: 2. Compilar Local ISO 64-bit (amd64 + Chromium + Apps + Yonata)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -156,12 +216,13 @@ jobs:
 
       - name: Compilar perry-pi-os-local-x64.iso
         run: |
-          set -e
+          set -euo pipefail
           rm -rf iso-build
           mkdir -p iso-build/config/package-lists \
             iso-build/config/includes.chroot_after_packages/usr/local/bin \
             iso-build/config/includes.chroot_after_packages/etc/lightdm/lightdm.conf.d \
-            iso-build/config/includes.chroot_after_packages/home/perry/.config/openbox
+            iso-build/config/includes.chroot_after_packages/home/perry/.config/openbox \
+            iso-build/config/includes.chroot_after_packages/home/perry/Desktop
           cd iso-build
 
           lb config --mode debian --architecture amd64 --distribution bookworm \
@@ -181,46 +242,69 @@ jobs:
           fi
 
           cat << 'EOF' > config/package-lists/perry.list.chroot
-          linux-image-amd64 xorg openbox lxterminal pcmanfm tint2 mousepad chromium python3 python3-tk espeak-ng lightdm sudo
+          linux-image-amd64 xorg openbox lxterminal pcmanfm tint2 mousepad chromium galculator viewnior htop python3 python3-tk espeak-ng lightdm sudo dbus-x11
           EOF
 
           cat << 'PYEOF' > config/includes.chroot_after_packages/usr/local/bin/yonata-welcome.py
           import tkinter as tk
           from tkinter import ttk
-          import subprocess, threading, platform, os
+          import subprocess, threading, platform, os, shutil
 
           FLAG = os.path.expanduser("~/.perry_welcome_done")
 
           def hablar(t):
-              threading.Thread(
-                  target=lambda: subprocess.run(["espeak-ng", "-v", "es", "-s", "145", t], check=False),
-                  daemon=True
-              ).start()
+              if shutil.which("espeak-ng"):
+                  threading.Thread(
+                      target=lambda: subprocess.run(["espeak-ng", "-v", "es", "-s", "145", t], check=False),
+                      daemon=True
+                  ).start()
 
           class Yonata:
               def __init__(self, r):
                   self.r = r
                   r.title("Yonata - Asistente Oficial Perry Pi OS")
-                  r.geometry("540x400")
+                  r.geometry("560x420")
                   r.configure(bg="#0f172a")
-                  tk.Label(r, text="Hola, soy Yonata", font=("Sans", 18, "bold"), fg="#38bdf8", bg="#0f172a").pack(pady=(35, 10))
-                  self.desc = tk.Label(r, text="Asistente oficial de Perry Pi OS listo.", font=("Sans", 11), fg="#e2e8f0", bg="#0f172a")
-                  self.desc.pack(pady=10)
-                  self.pb = ttk.Progressbar(r, length=380, mode="determinate")
-                  self.pb.pack(pady=15)
-                  self.btn = tk.Button(
-                      r, text="Verificar Sistema", bg="#10b981", fg="#fff",
-                      font=("Sans", 11, "bold"), relief="flat", padx=20, pady=8, command=self.run
+                  tk.Label(
+                      r, text="Hola, soy Yonata",
+                      font=("Sans", 19, "bold"), fg="#38bdf8", bg="#0f172a"
+                  ).pack(pady=(28, 6))
+                  tk.Label(
+                      r, text="Perry Pi OS • Usuario: perry",
+                      font=("Sans", 9), fg="#94a3b8", bg="#0f172a"
+                  ).pack()
+                  self.desc = tk.Label(
+                      r, text="Asistente oficial de Perry Pi OS listo.",
+                      font=("Sans", 11), fg="#e2e8f0", bg="#0f172a", wraplength=500
                   )
-                  self.btn.pack(pady=10)
+                  self.desc.pack(pady=14)
+                  self.pb = ttk.Progressbar(r, length=400, mode="determinate")
+                  self.pb.pack(pady=12)
+
+                  btn_frame = tk.Frame(r, bg="#0f172a")
+                  btn_frame.pack(pady=10)
+
+                  self.btn = tk.Button(
+                      btn_frame, text="Verificar Sistema", bg="#10b981", fg="#fff",
+                      font=("Sans", 10, "bold"), relief="flat", padx=16, pady=8, command=self.run
+                  )
+                  self.btn.pack(side="left", padx=6)
+
+                  self.term_btn = tk.Button(
+                      btn_frame, text="Abrir Terminal", bg="#334155", fg="#fff",
+                      font=("Sans", 10, "bold"), relief="flat", padx=14, pady=8,
+                      command=lambda: subprocess.Popen(["lxterminal"], start_new_session=True)
+                  )
+                  self.term_btn.pack(side="left", padx=6)
+
                   r.after(500, lambda: hablar("Hola, soy Yonata, tu asistente oficial de Perry Pi OS."))
 
               def run(self):
                   self.btn.config(state="disabled")
-                  self.desc.config(text=f"Arquitectura: {platform.machine()} | Navegador, Notepad y Yonata listos.")
+                  self.desc.config(text=f"Arquitectura: {platform.machine()} | Chromium, Editor, Calculadora y Yonata listos.")
                   hablar("Verificando entorno base de Perry Pi OS.")
-                  self.pb["value"] = 60
-                  self.r.after(1500, self.done)
+                  self.pb["value"] = 65
+                  self.r.after(1200, self.done)
 
               def done(self):
                   self.pb["value"] = 100
@@ -236,9 +320,26 @@ jobs:
               root.mainloop()
           PYEOF
 
-          chmod +x config/includes.chroot_after_packages/usr/local/bin/yonata-welcome.py
           printf '[Seat:*]\nautologin-user=perry\nautologin-user-timeout=0\n' > config/includes.chroot_after_packages/etc/lightdm/lightdm.conf.d/autologin.conf
-          printf 'tint2 &\n[ ! -f "$HOME/.perry_welcome_done" ] && python3 /usr/local/bin/yonata-welcome.py &\n' > config/includes.chroot_after_packages/home/perry/.config/openbox/autostart
+
+          cat << 'AUTOEOF' > config/includes.chroot_after_packages/home/perry/.config/openbox/autostart
+          tint2 &
+          if [ ! -f "$HOME/.perry_welcome_done" ]; then
+            python3 /usr/local/bin/yonata-welcome.py &
+          fi
+          AUTOEOF
+
+          cat << 'DESKEOF' > config/includes.chroot_after_packages/home/perry/Desktop/Yonata.desktop
+          [Desktop Entry]
+          Type=Application
+          Name=Yonata Asistente
+          Exec=python3 /usr/local/bin/yonata-welcome.py
+          Icon=utilities-terminal
+          Terminal=false
+          DESKEOF
+
+          chmod +x config/includes.chroot_after_packages/usr/local/bin/yonata-welcome.py \
+                   config/includes.chroot_after_packages/home/perry/Desktop/Yonata.desktop
 
           sudo lb build
           mv live-image-amd64.hybrid.iso ../perry-pi-os-local-x64.iso
@@ -258,67 +359,90 @@ jobs:
       - name: Instalar herramientas
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq debootstrap debian-archive-keyring grub-pc-bin parted dosfstools
+          sudo apt-get install -y -qq debootstrap debian-archive-keyring grub-pc-bin parted dosfstools e2fsprogs
 
       - name: Construir perry-pi-os-normal-x64.img
         run: |
-          set -e
-          dd if=/dev/zero of=perry-pi-os-normal-x64.img bs=1M count=2600 status=none
-          parted -s perry-pi-os-normal-x64.img mklabel msdos
-          parted -s perry-pi-os-normal-x64.img mkpart primary ext4 1MiB 100%
-          parted -s perry-pi-os-normal-x64.img set 1 boot on
+          set -euo pipefail
+          IMG="perry-pi-os-normal-x64.img"
+          dd if=/dev/zero of="$IMG" bs=1M count=2600 status=none
+          parted -s "$IMG" mklabel msdos
+          parted -s "$IMG" mkpart primary ext4 1MiB 100%
+          parted -s "$IMG" set 1 boot on
 
-          LOOP_DEV=$(sudo losetup --find --show --partscan perry-pi-os-normal-x64.img)
+          LOOP_DEV=$(sudo losetup --find --show --partscan "$IMG")
           PART_DEV="${LOOP_DEV}p1"
-          sudo mkfs.ext4 -F "$PART_DEV"
+          sudo mkfs.ext4 -F -L "PERRY_X64" "$PART_DEV"
 
           mkdir -p mnt
           sudo mount "$PART_DEV" mnt
+
           sudo debootstrap --arch=amd64 --variant=minbase bookworm mnt http://deb.debian.org/debian
 
-          sudo mount --bind /dev mnt/dev
-          sudo mount --bind /dev/pts mnt/dev/pts
-          sudo mount --bind /proc mnt/proc
-          sudo mount --bind /sys mnt/sys
-          sudo mount --bind /run mnt/run
+          for d in dev dev/pts proc sys run; do
+            sudo mount --bind "/$d" "mnt/$d"
+          done
 
           cat << 'PYEOF' > yonata.py
           import tkinter as tk
           from tkinter import ttk
-          import subprocess, threading, platform, os
+          import subprocess, threading, platform, os, shutil
 
           FLAG = os.path.expanduser("~/.perry_welcome_done")
 
           def hablar(t):
-              threading.Thread(
-                  target=lambda: subprocess.run(["espeak-ng", "-v", "es", "-s", "145", t], check=False),
-                  daemon=True
-              ).start()
+              if shutil.which("espeak-ng"):
+                  threading.Thread(
+                      target=lambda: subprocess.run(["espeak-ng", "-v", "es", "-s", "145", t], check=False),
+                      daemon=True
+                  ).start()
 
           class Yonata:
               def __init__(self, r):
                   self.r = r
                   r.title("Yonata - Asistente Oficial Perry Pi OS")
-                  r.geometry("540x400")
+                  r.geometry("560x420")
                   r.configure(bg="#0f172a")
-                  tk.Label(r, text="Hola, soy Yonata", font=("Sans", 18, "bold"), fg="#38bdf8", bg="#0f172a").pack(pady=(35, 10))
-                  self.desc = tk.Label(r, text="Asistente oficial de Perry Pi OS listo.", font=("Sans", 11), fg="#e2e8f0", bg="#0f172a")
-                  self.desc.pack(pady=10)
-                  self.pb = ttk.Progressbar(r, length=380, mode="determinate")
-                  self.pb.pack(pady=15)
-                  self.btn = tk.Button(
-                      r, text="Verificar Sistema", bg="#10b981", fg="#fff",
-                      font=("Sans", 11, "bold"), relief="flat", padx=20, pady=8, command=self.run
+                  tk.Label(
+                      r, text="Hola, soy Yonata",
+                      font=("Sans", 19, "bold"), fg="#38bdf8", bg="#0f172a"
+                  ).pack(pady=(28, 6))
+                  tk.Label(
+                      r, text="Perry Pi OS • Usuario: perry",
+                      font=("Sans", 9), fg="#94a3b8", bg="#0f172a"
+                  ).pack()
+                  self.desc = tk.Label(
+                      r, text="Asistente oficial de Perry Pi OS listo.",
+                      font=("Sans", 11), fg="#e2e8f0", bg="#0f172a", wraplength=500
                   )
-                  self.btn.pack(pady=10)
+                  self.desc.pack(pady=14)
+                  self.pb = ttk.Progressbar(r, length=400, mode="determinate")
+                  self.pb.pack(pady=12)
+
+                  btn_frame = tk.Frame(r, bg="#0f172a")
+                  btn_frame.pack(pady=10)
+
+                  self.btn = tk.Button(
+                      btn_frame, text="Verificar Sistema", bg="#10b981", fg="#fff",
+                      font=("Sans", 10, "bold"), relief="flat", padx=16, pady=8, command=self.run
+                  )
+                  self.btn.pack(side="left", padx=6)
+
+                  self.term_btn = tk.Button(
+                      btn_frame, text="Abrir Terminal", bg="#334155", fg="#fff",
+                      font=("Sans", 10, "bold"), relief="flat", padx=14, pady=8,
+                      command=lambda: subprocess.Popen(["lxterminal"], start_new_session=True)
+                  )
+                  self.term_btn.pack(side="left", padx=6)
+
                   r.after(500, lambda: hablar("Hola, soy Yonata, tu asistente oficial de Perry Pi OS."))
 
               def run(self):
                   self.btn.config(state="disabled")
-                  self.desc.config(text=f"Arquitectura: {platform.machine()} | Navegador, Notepad y Yonata listos.")
+                  self.desc.config(text=f"Arquitectura: {platform.machine()} | Chromium, Editor, Calculadora y Yonata listos.")
                   hablar("Verificando entorno base de Perry Pi OS.")
-                  self.pb["value"] = 60
-                  self.r.after(1500, self.done)
+                  self.pb["value"] = 65
+                  self.r.after(1200, self.done)
 
               def done(self):
                   self.pb["value"] = 100
@@ -337,7 +461,7 @@ jobs:
           sudo cp yonata.py mnt/usr/local/bin/yonata-welcome.py
 
           sudo chroot mnt /bin/bash -s "$LOOP_DEV" << 'CHROOTEOF'
-          set -e
+          set -euo pipefail
           export DEBIAN_FRONTEND=noninteractive
           LOOP_DEV="$1"
 
@@ -349,28 +473,65 @@ jobs:
           apt-get clean
           apt-get install -y -qq --no-install-recommends \
             grub-pc xorg openbox lxterminal pcmanfm tint2 mousepad chromium \
-            python3 python3-tk espeak-ng lightdm sudo ca-certificates
+            galculator viewnior htop \
+            python3 python3-tk espeak-ng lightdm sudo ca-certificates dbus-x11
 
-          sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=""/' /etc/default/grub
+          sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT="console=ttyS0,115200 console=tty0"/' /etc/default/grub
           sed -i 's/GRUB_TIMEOUT=.*/GRUB_TIMEOUT=1/' /etc/default/grub
 
           id -u perry >/dev/null 2>&1 || useradd -m -s /bin/bash -G sudo perry
           echo "perry:perry" | chpasswd
           echo "root:perry" | chpasswd
 
-          mkdir -p /etc/lightdm/lightdm.conf.d /home/perry/.config/openbox
+          mkdir -p /etc/lightdm/lightdm.conf.d /home/perry/.config/openbox /home/perry/Desktop
           printf '[Seat:*]\nautologin-user=perry\nautologin-user-timeout=0\n' > /etc/lightdm/lightdm.conf.d/autologin.conf
-          printf 'tint2 &\n[ ! -f "$HOME/.perry_welcome_done" ] && python3 /usr/local/bin/yonata-welcome.py &\n' > /home/perry/.config/openbox/autostart
-          chmod +x /usr/local/bin/yonata-welcome.py
-          chown -R perry:perry /home/perry/.config
+
+          cat << 'AUTOEOF' > /home/perry/.config/openbox/autostart
+          tint2 &
+          if [ ! -f "$HOME/.perry_welcome_done" ]; then
+            python3 /usr/local/bin/yonata-welcome.py &
+          fi
+          AUTOEOF
+
+          cat << 'DESKEOF' > /home/perry/Desktop/Yonata.desktop
+          [Desktop Entry]
+          Type=Application
+          Name=Yonata Asistente
+          Exec=python3 /usr/local/bin/yonata-welcome.py
+          Icon=utilities-terminal
+          Terminal=false
+          DESKEOF
+
+          chmod +x /usr/local/bin/yonata-welcome.py /home/perry/Desktop/Yonata.desktop
+          chown -R perry:perry /home/perry
 
           grub-install --target=i386-pc --boot-directory=/boot "$LOOP_DEV"
           update-grub
+
+          UUID=$(blkid -s UUID -o value "$PART_DEV")
+          if [ -n "$UUID" ] && [ ! -s /boot/grub/grub.cfg ]; then
+            cat << GRUBEOF > /boot/grub/grub.cfg
+          set default=0
+          set timeout=1
+          serial --unit=0 --speed=115200
+          terminal_input serial console
+          terminal_output serial console
+          menuentry "Perry Pi OS (Normal 64-bit)" {
+              search --no-floppy --fs-uuid --set=root $UUID
+              linux /boot/vmlinuz-6.1.0*-amd64 root=UUID=$UUID ro console=ttyS0,115200 console=tty0
+              initrd /boot/initrd.img-6.1.0*-amd64
+          }
+          GRUBEOF
+          fi
+
           apt-get clean
           rm -rf /var/lib/apt/lists/*
           CHROOTEOF
 
-          sudo umount -lf mnt/dev/pts mnt/dev mnt/proc mnt/sys mnt/run mnt 2>/dev/null || true
+          for d in run sys proc dev/pts dev; do
+            sudo umount -lf "mnt/$d" 2>/dev/null || true
+          done
+          sudo umount -lf mnt 2>/dev/null || true
           sudo losetup -d "$LOOP_DEV"
 
       - name: Subir artefacto Normal 64-bit
@@ -392,14 +553,18 @@ jobs:
           path: release-assets
           merge-multiple: true
 
-      - name: Comprimir imágenes (.img -> .img.gz) para cumplir límite de 2 GB
-        if: hashFiles('release-assets/*') != ''
+      - name: Comprimir imágenes (.img -> .img.gz) y preparar release
         run: |
+          set -euo pipefail
+          mkdir -p release-assets
           shopt -s nullglob
-          for f in release-assets/*.img; do
-            gzip -9 -f "$f"
-          done
-          ls -lh release-assets/
+          imgs=(release-assets/*.img)
+          if [ "${#imgs[@]}" -gt 0 ]; then
+            for f in "${imgs[@]}"; do
+              gzip -9 -f "$f"
+            done
+          fi
+          ls -lh release-assets/ || true
 
       - name: Publicar en Release (latest)
         if: hashFiles('release-assets/*') != ''
