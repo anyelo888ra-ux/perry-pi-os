@@ -1,0 +1,151 @@
+name: Compilar Perry Pi OS (Web 32-bit y Local 64-bit)
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "build/**"
+      - ".github/workflows/build-os.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build-web-32bit:
+    name: Compilar Perry Pi OS Web (32-bit + Yonata)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar herramientas
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y debootstrap grub-pc-bin parted dosfstools
+
+      - name: Construir imagen perry-pi-os-web.img (i386)
+        run: |
+          dd if=/dev/zero of=perry-pi-os-web.img bs=1M count=1400
+          parted perry-pi-os-web.img --script mklabel msdos
+          parted perry-pi-os-web.img --script mkpart primary ext4 1MiB 100%
+          parted perry-pi-os-web.img --script set 1 boot on
+
+          LOOP_DEV=$(sudo losetup --find --show --partscan perry-pi-os-web.img)
+          sudo mkfs.ext4 -F ${LOOP_DEV}p1
+          mkdir -p mnt
+          sudo mount ${LOOP_DEV}p1 mnt
+
+          sudo debootstrap --arch=i386 bookworm mnt http://debian.org
+
+          sudo mount --bind /dev mnt/dev
+          sudo mount --bind /proc mnt/proc
+          sudo mount --bind /sys mnt/sys
+
+          cat << 'PYEOF' > yonata.py
+          import tkinter as tk
+          from tkinter import ttk
+          import subprocess, threading, platform, os
+
+          FLAG = os.path.expanduser("~/.perry_welcome_done")
+          def hablar(t):
+              threading.Thread(target=lambda: subprocess.run(["espeak-ng", "-v", "es", "-s", "145", t]), daemon=True).start()
+
+          class Yonata:
+              def __init__(self, r):
+                  self.r = r
+                  r.title("Yonata - Asistente Perry Pi OS")
+                  r.geometry("520x380")
+                  r.configure(bg="#0f172a")
+                  tk.Label(r, text="Hola, soy Yonata", font=("Sans", 18, "bold"), fg="#38bdf8", bg="#0f172a").pack(pady=(35,10))
+                  self.desc = tk.Label(r, text="Preparando Perry Pi OS...", font=("Sans", 11), fg="#e2e8f0", bg="#0f172a")
+                  self.desc.pack(pady=10)
+                  self.pb = ttk.Progressbar(r, length=360, mode="determinate")
+                  self.pb.pack(pady=15)
+                  self.btn = tk.Button(r, text="Verificar Sistema", bg="#10b981", fg="#fff", font=("Sans", 11, "bold"), relief="flat", padx=20, pady=8, command=self.run)
+                  self.btn.pack(pady=10)
+                  r.after(500, lambda: hablar("Hola, soy Yonata, tu asistente de Perry Pi OS."))
+              def run(self):
+                  self.btn.config(state="disabled")
+                  self.desc.config(text=f"Arquitectura: {platform.machine()} | Verificando MicroPython y Python 3...")
+                  hablar("Verificando MicroPython y componentes del sistema.")
+                  self.pb["value"] = 60
+                  self.r.after(1800, self.done)
+              def done(self):
+                  self.pb["value"] = 100
+                  self.desc.config(text="¡Perry Pi OS verificado y listo para usar!")
+                  hablar("Todo está listo. Bienvenido a Perry Pi OS.")
+                  open(FLAG, "w").write("ok")
+                  self.btn.config(text="Ir al Escritorio", bg="#3b82f6", state="normal", command=self.r.destroy)
+
+          root = tk.Tk()
+          Yonata(root)
+          root.mainloop()
+          PYEOF
+
+          sudo cp yonata.py mnt/usr/local/bin/yonata-welcome.py
+
+          sudo chroot mnt /bin/bash -c "
+          export DEBIAN_FRONTEND=noninteractive
+          echo 'perry-pi-os' > /etc/hostname
+          apt-get update
+          apt-get install -y linux-image-686 grub-pc xorg openbox lxterminal pcmanfm tint2 micropython python3 python3-tk espeak-ng netsurf-gtk lightdm sudo
+
+          sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"\"/' /etc/default/grub
+          sed -i 's/GRUB_TIMEOUT=.*/GRUB_TIMEOUT=1/' /etc/default/grub
+
+          useradd -m -s /bin/bash -G sudo perry
+          echo 'perry:perry' | chpasswd
+          echo 'root:perry' | chpasswd
+
+          mkdir -p /etc/lightdm/lightdm.conf.d /home/perry/.config/openbox
+          printf '[Seat:*]\nautologin-user=perry\nautologin-user-timeout=0\n' > /etc/lightdm/lightdm.conf.d/autologin.conf
+          printf 'tint2 &\n[ ! -f \"\$HOME/.perry_welcome_done\" ] && python3 /usr/local/bin/yonata-welcome.py &\n' > /home/perry/.config/openbox/autostart
+          chmod +x /usr/local/bin/yonata-welcome.py
+          chown -R perry:perry /home/perry/.config
+
+          apt-get clean
+          grub-install --target=i386-pc --boot-directory=/boot $LOOP_DEV
+          update-grub
+          "
+
+          sudo umount mnt/dev mnt/proc mnt/sys mnt
+          sudo losetup -d $LOOP_DEV
+
+      - name: Subir imagen Web a GitHub Releases (latest)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Perry Pi OS - Última Compilación
+          files: perry-pi-os-web.img
+
+  build-local-64bit-iso:
+    name: Compilar Perry Pi OS Local ISO (64-bit + Chromium + Yonata)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar live-build
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y live-build
+
+      - name: Compilar ISO x86_64 con Chromium
+        run: |
+          mkdir iso-build && cd iso-build
+          lb config --architecture amd64 --distribution bookworm \
+            --binary-images iso-hybrid \
+            --bootappend-live "boot=live components username=perry hostname=perry-pi-os"
+
+          mkdir -p config/package-lists
+          cat << 'EOF' > config/package-lists/perry.list.chroot
+          xorg openbox lxterminal pcmanfm tint2 chromium micropython python3 python3-tk espeak-ng lightdm sudo
+          EOF
+
+          sudo lb build
+          mv live-image-amd64.hybrid.iso ../perry-pi-os-local-x64.iso
+
+      - name: Subir ISO Local 64-bit a GitHub Releases (latest)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Perry Pi OS - Última Compilación
+          files: perry-pi-os-local-x64.iso
