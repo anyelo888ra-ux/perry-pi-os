@@ -14,6 +14,7 @@
       --sky: #38bdf8;
       --green: #10b981;
       --amber: #f59e0b;
+      --red: #ef4444;
     }
 
     *, *::before, *::after { box-sizing: border-box; }
@@ -75,7 +76,7 @@
       flex-wrap: wrap;
     }
 
-    button, a.btn-link, label.btn-file {
+    button, a.btn-link, label.btn-file, select.btn-select {
       background: var(--sky);
       color: #0f172a;
       border: none;
@@ -91,11 +92,14 @@
       gap: 6px;
     }
 
-    button:hover, a.btn-link:hover, label.btn-file:hover { filter: brightness(1.08); }
+    button:hover, a.btn-link:hover, label.btn-file:hover, select.btn-select:hover {
+      filter: brightness(1.08);
+    }
 
-    a.btn-link {
+    a.btn-link, select.btn-select {
       background: #334155;
       color: var(--text);
+      border: 1px solid var(--border);
     }
 
     label.btn-file {
@@ -118,6 +122,12 @@
       position: relative;
     }
 
+    #screen_container.dragover {
+      outline: 3px dashed var(--sky);
+      outline-offset: -8px;
+      background: rgba(56, 189, 248, 0.06);
+    }
+
     #screen_container canvas {
       max-width: 100%;
       max-height: 100%;
@@ -129,13 +139,14 @@
       top: 16px;
       left: 50%;
       transform: translateX(-50%);
-      width: min(460px, 90%);
-      background: rgba(30, 41, 59, 0.95);
+      width: min(500px, 92%);
+      background: rgba(30, 41, 59, 0.96);
       border: 1px solid var(--border);
       border-radius: 10px;
-      padding: 10px 14px;
+      padding: 12px 16px;
       z-index: 10;
       display: none;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
     }
 
     .progress-label {
@@ -144,6 +155,7 @@
       margin-bottom: 6px;
       display: flex;
       justify-content: space-between;
+      gap: 10px;
     }
 
     .progress-track {
@@ -158,6 +170,40 @@
       width: 0%;
       background: var(--sky);
       transition: width 0.2s ease;
+    }
+
+    .fallback-card {
+      position: relative;
+      z-index: 5;
+      max-width: 520px;
+      width: 92%;
+      background: #0f172a;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      display: none;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+    }
+
+    .fallback-card h3 {
+      margin: 0 0 8px;
+      font-size: 1.05rem;
+      color: var(--sky);
+    }
+
+    .fallback-card p {
+      margin: 0 0 14px;
+      font-size: 0.86rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .fallback-actions {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
     }
 
     .hint-bar {
@@ -184,9 +230,15 @@
     </div>
     <div class="actions">
       <a class="btn-link" href="index.html">← Inicio</a>
+      <select id="ram-select" class="btn-select" title="Memoria RAM del emulador" onchange="changeRam(this.value)">
+        <option value="512">RAM: 512 MB</option>
+        <option value="256">RAM: 256 MB</option>
+        <option value="768">RAM: 768 MB</option>
+      </select>
       <label class="btn-file" for="file-input">📂 Cargar .img / .img.gz</label>
-      <input id="file-input" type="file" accept=".img,.gz" onchange="handleLocalFile(event)">
-      <button type="button" onclick="window.emulator && window.emulator.restart()">Reiniciar</button>
+      <input id="file-input" type="file" accept=".img,.gz,.iso" onchange="handleLocalFile(event)">
+      <button type="button" onclick="retryCloudLoad()">Reintentar Nube</button>
+      <button type="button" onclick="restartEmulator()">Reiniciar</button>
       <button type="button" onclick="toggleFullscreen()">Pantalla Completa</button>
     </div>
   </header>
@@ -201,18 +253,43 @@
         <div id="progress-fill" class="progress-fill"></div>
       </div>
     </div>
+
+    <div id="fallback-box" class="fallback-card">
+      <h3>No se pudo cargar la imagen desde la nube</h3>
+      <p id="fallback-reason">
+        No se encontró <code>perry-pi-os-web.img.gz</code> ni <code>perry-pi-os-web.img</code> en el servidor o hubo un error de red.
+        Puedes cargar tu archivo <code>.img</code> o <code>.img.gz</code> desde tu equipo o arrastrarlo aquí.
+      </p>
+      <div class="fallback-actions">
+        <label class="btn-file" for="file-input">📂 Seleccionar archivo local</label>
+        <button type="button" onclick="retryCloudLoad()">↻ Reintentar descarga</button>
+      </div>
+    </div>
+
     <div style="white-space: pre; font: 14px monospace; line-height: 14px"></div>
     <canvas style="display:none"></canvas>
   </div>
 
   <div class="hint-bar">
-    <span>Haz clic dentro de la pantalla para enfocar el teclado en el emulador.</span>
+    <span>Haz clic en la pantalla para enfocar el teclado • También puedes arrastrar un <code>.img</code> o <code>.img.gz</code> aquí.</span>
     <span id="disk-label">Disco: <code>perry-pi-os-web.img.gz</code> / <code>perry-pi-os-web.img</code></span>
   </div>
 
   <script>
-    const GZIP_URL = "perry-pi-os-web.img.gz";
-    const RAW_URL = "perry-pi-os-web.img";
+    const params = new URLSearchParams(window.location.search);
+    const customDisk = params.get("disk");
+
+    // Fuentes remotas por defecto (local relativo primero, luego respaldo si configuras una URL)
+    const CLOUD_SOURCES = customDisk
+      ? [{ url: customDisk, label: customDisk }]
+      : [
+          { url: "perry-pi-os-web.img.gz", label: "perry-pi-os-web.img.gz (nube/local)" },
+          { url: "perry-pi-os-web.img", label: "perry-pi-os-web.img (nube/local)" }
+        ];
+
+    let currentRamMb = Number(document.getElementById("ram-select").value) || 512;
+    let lastHdaConfig = null;
+    let lastDiskLabel = "";
 
     function setStatus(text, type = "ok") {
       const el = document.getElementById("emu-status");
@@ -248,7 +325,23 @@
       if (fill) fill.style.width = clamped + "%";
     }
 
+    function showFallback(reasonText) {
+      setProgress(false);
+      const box = document.getElementById("fallback-box");
+      const reason = document.getElementById("fallback-reason");
+      if (reason && reasonText) {
+        reason.innerHTML = reasonText + "<br><br>Puedes cargar tu archivo <code>.img</code> o <code>.img.gz</code> desde tu equipo o arrastrarlo aquí.";
+      }
+      if (box) box.style.display = "block";
+    }
+
+    function hideFallback() {
+      const box = document.getElementById("fallback-box");
+      if (box) box.style.display = "none";
+    }
+
     function setDiskLabel(text) {
+      lastDiskLabel = text;
       const el = document.getElementById("disk-label");
       if (el) el.innerHTML = "Disco: <code>" + text + "</code>";
     }
@@ -262,9 +355,26 @@
       }
     }
 
+    function restartEmulator() {
+      if (window.emulator && typeof window.emulator.restart === "function") {
+        window.emulator.restart();
+      } else if (lastHdaConfig) {
+        startEmulatorWithHda(lastHdaConfig, lastDiskLabel);
+      } else {
+        retryCloudLoad();
+      }
+    }
+
+    function changeRam(newRam) {
+      currentRamMb = Number(newRam) || 512;
+      if (lastHdaConfig) {
+        startEmulatorWithHda(lastHdaConfig, lastDiskLabel);
+      }
+    }
+
     async function decompressGzipStream(stream, totalBytes, onProgress) {
       if (typeof DecompressionStream === "undefined") {
-        throw new Error("Tu navegador no soporta DecompressionStream('gzip'). Sube el .img descomprimido.");
+        throw new Error("Tu navegador no soporta DecompressionStream('gzip'). Sube el .img ya descomprimido.");
       }
       const reader = stream.getReader();
       let received = 0;
@@ -286,18 +396,21 @@
       });
 
       const decompressed = metered.pipeThrough(new DecompressionStream("gzip"));
-      const arrayBuffer = await new Response(decompressed).arrayBuffer();
-      return arrayBuffer;
+      return await new Response(decompressed).arrayBuffer();
     }
 
-    function startEmulatorWithHda(hdaConfig) {
+    function startEmulatorWithHda(hdaConfig, labelText) {
+      hideFallback();
+      lastHdaConfig = hdaConfig;
+      if (labelText) setDiskLabel(labelText);
+
       if (window.emulator && typeof window.emulator.destroy === "function") {
         try { window.emulator.destroy(); } catch (_) {}
       }
 
       window.emulator = new V86({
         wasm_path: "v86.wasm",
-        memory_size: 256 * 1024 * 1024,
+        memory_size: currentRamMb * 1024 * 1024,
         vga_memory_size: 16 * 1024 * 1024,
         screen_container: document.getElementById("screen_container"),
         bios: { url: "seabios.bin" },
@@ -312,75 +425,167 @@
 
       window.emulator.add_listener("emulator-started", function() {
         setProgress(false);
-        setStatus("Ejecutando", "ok");
+        setStatus("Ejecutando (" + currentRamMb + " MB)", "ok");
       });
     }
 
-    async function loadFromGzOrRaw() {
-      setStatus("Buscando imagen...", "busy");
-      setProgress(true, "Comprobando perry-pi-os-web.img.gz...", 5);
+    async function fetchWithProgress(url, onProgress) {
+      const res = await fetch(url, { cache: "no-store" });
+      if (!res.ok) {
+        throw new Error("HTTP " + res.status + " al pedir " + url);
+      }
+      if (!res.body) {
+        return await res.arrayBuffer();
+      }
+      const total = Number(res.headers.get("Content-Length") || 0);
+      const reader = res.body.getReader();
+      const chunks = [];
+      let received = 0;
 
-      try {
-        const resGz = await fetch(GZIP_URL);
-        if (resGz.ok && resGz.body) {
-          const total = Number(resGz.headers.get("Content-Length") || 0);
-          setDiskLabel(GZIP_URL + " (descomprimiendo en memoria)");
-          const rawBuffer = await decompressGzipStream(resGz.body, total, (pct) => {
-            setProgress(true, "Descargando y descomprimiendo .img.gz...", pct);
-          });
-          setProgress(true, "Arrancando emulador con imagen descomprimida...", 100);
-          startEmulatorWithHda({ buffer: rawBuffer });
-          return;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        received += value.byteLength;
+        if (total > 0 && onProgress) {
+          onProgress((received / total) * 100);
         }
-      } catch (err) {
-        console.warn("No se pudo cargar/descomprimir .img.gz, probando .img:", err);
       }
 
-      // Respaldo: usar el .img descomprimido si existe en el servidor
-      setDiskLabel(RAW_URL);
-      setProgress(true, "Cargando perry-pi-os-web.img...", 50);
-      startEmulatorWithHda({ url: RAW_URL, async: true });
+      const combined = new Uint8Array(received);
+      let offset = 0;
+      for (const chunk of chunks) {
+        combined.set(chunk, offset);
+        offset += chunk.byteLength;
+      }
+      return combined.buffer;
     }
 
-    async function handleLocalFile(event) {
-      const file = event.target.files && event.target.files[0];
-      if (!file) return;
+    async function loadFromCloud() {
+      hideFallback();
+      setStatus("Buscando imagen...", "busy");
+      setProgress(true, "Comprobando fuentes en la nube/servidor...", 5);
 
+      const errors = [];
+
+      for (const src of CLOUD_SOURCES) {
+        try {
+          const isGz = src.url.toLowerCase().endsWith(".gz");
+          setProgress(true, "Descargando " + src.label + "...", 15);
+
+          const res = await fetch(src.url, { cache: "no-store" });
+          if (!res.ok) {
+            throw new Error("HTTP " + res.status);
+          }
+
+          if (isGz && res.body) {
+            const total = Number(res.headers.get("Content-Length") || 0);
+            const rawBuffer = await decompressGzipStream(res.body, total, (pct) => {
+              setProgress(true, "Descargando y descomprimiendo " + src.url + "...", pct);
+            });
+            setProgress(true, "Arrancando emulador...", 100);
+            startEmulatorWithHda({ buffer: rawBuffer }, src.url + " (descomprimido en memoria)");
+            return;
+          }
+
+          const rawBuffer = await fetchWithProgress(src.url, (pct) => {
+            setProgress(true, "Cargando " + src.url + "...", pct);
+          });
+          const finalBuffer = isGz
+            ? await decompressGzipStream(new Response(rawBuffer).body, rawBuffer.byteLength, null)
+            : rawBuffer;
+
+          setProgress(true, "Arrancando emulador...", 100);
+          startEmulatorWithHda({ buffer: finalBuffer }, src.url);
+          return;
+        } catch (err) {
+          errors.push(src.url + ": " + (err && err.message ? err.message : String(err)));
+        }
+      }
+
+      setStatus("Sin imagen en nube", "error");
+      showFallback(
+        "No se pudo descargar la imagen desde la nube/servidor (" +
+        errors.join(" | ") +
+        ")."
+      );
+    }
+
+    function retryCloudLoad() {
+      loadFromCloud();
+    }
+
+    async function processLocalFile(file) {
+      if (!file) return;
       try {
+        hideFallback();
         setStatus("Cargando archivo local...", "busy");
+
         if (file.name.toLowerCase().endsWith(".gz")) {
-          setDiskLabel(file.name + " (descomprimiendo)");
           setProgress(true, "Descomprimiendo " + file.name + "...", 10);
           const rawBuffer = await decompressGzipStream(file.stream(), file.size, (pct) => {
             setProgress(true, "Descomprimiendo " + file.name + "...", pct);
           });
-          startEmulatorWithHda({ buffer: rawBuffer });
+          setProgress(true, "Arrancando desde archivo local...", 100);
+          startEmulatorWithHda({ buffer: rawBuffer }, file.name + " (local)");
         } else {
-          setDiskLabel(file.name);
-          setProgress(true, "Leyendo " + file.name + "...", 40);
+          setProgress(true, "Leyendo " + file.name + "...", 35);
           const rawBuffer = await file.arrayBuffer();
-          startEmulatorWithHda({ buffer: rawBuffer });
+          setProgress(true, "Arrancando desde archivo local...", 100);
+          startEmulatorWithHda({ buffer: rawBuffer }, file.name + " (local)");
         }
       } catch (err) {
         setProgress(false);
         setStatus(err.message || "Error al cargar archivo", "error");
+        showFallback("Error al leer el archivo local <code>" + file.name + "</code>: " + (err.message || err));
         console.error(err);
       }
     }
 
+    async function handleLocalFile(event) {
+      const file = event.target.files && event.target.files[0];
+      await processLocalFile(file);
+      event.target.value = "";
+    }
+
+    function setupDragAndDrop() {
+      const container = document.getElementById("screen_container");
+      if (!container) return;
+
+      ["dragenter", "dragover"].forEach((evtName) => {
+        container.addEventListener(evtName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          container.classList.add("dragover");
+        });
+      });
+
+      ["dragleave", "drop"].forEach((evtName) => {
+        container.addEventListener(evtName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          container.classList.remove("dragover");
+        });
+      });
+
+      container.addEventListener("drop", async (e) => {
+        const files = e.dataTransfer && e.dataTransfer.files;
+        if (files && files.length > 0) {
+          await processLocalFile(files[0]);
+        }
+      });
+    }
+
     window.onload = function() {
+      setupDragAndDrop();
+
       if (typeof V86 === "undefined") {
         setStatus("Error: no se cargó libv86.js", "error");
+        showFallback("No se cargó <code>libv86.js</code>. Revisa que los archivos de v86 estén en la misma carpeta que <code>demo.html</code>.");
         return;
       }
 
-      try {
-        loadFromGzOrRaw();
-      } catch (err) {
-        setProgress(false);
-        setStatus("Error al iniciar V86", "error");
-        console.error(err);
-      }
+      loadFromCloud();
     };
   </script>
 </body>
