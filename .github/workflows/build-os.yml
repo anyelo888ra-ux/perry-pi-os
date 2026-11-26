@@ -27,7 +27,7 @@ jobs:
       - name: Construir perry-pi-os-web.img
         run: |
           set -e
-          dd if=/dev/zero of=perry-pi-os-web.img bs=1M count=1400 status=none
+          dd if=/dev/zero of=perry-pi-os-web.img bs=1M count=1500 status=none
           parted -s perry-pi-os-web.img mklabel msdos
           parted -s perry-pi-os-web.img mkpart primary ext4 1MiB 100%
           parted -s perry-pi-os-web.img set 1 boot on
@@ -41,8 +41,10 @@ jobs:
           sudo debootstrap --arch=i386 --variant=minbase bookworm mnt http://deb.debian.org/debian
 
           sudo mount --bind /dev mnt/dev
+          sudo mount --bind /dev/pts mnt/dev/pts
           sudo mount --bind /proc mnt/proc
           sudo mount --bind /sys mnt/sys
+          sudo mount --bind /run mnt/run
 
           cat << 'PYEOF' > yonata.py
           import tkinter as tk
@@ -107,8 +109,9 @@ jobs:
           printf 'PRETTY_NAME="Perry Pi OS 1.0 (Web 32-bit)"\nNAME="Perry Pi OS"\nID=perrypios\n' > /etc/os-release
 
           apt-get update -qq
+          apt-get install -y -qq --no-install-recommends linux-image-686
           apt-get install -y -qq --no-install-recommends \
-            linux-image-686 grub-pc xorg openbox lxterminal pcmanfm tint2 \
+            grub-pc xorg openbox lxterminal pcmanfm tint2 \
             python3 python3-pip python3-tk espeak-ng netsurf-gtk lightdm sudo ca-certificates
 
           pip install --break-system-packages --no-cache-dir micropython || true
@@ -132,7 +135,7 @@ jobs:
           rm -rf /var/lib/apt/lists/*
           CHROOTEOF
 
-          sudo umount -lf mnt/dev mnt/proc mnt/sys mnt 2>/dev/null || true
+          sudo umount -lf mnt/dev/pts mnt/dev mnt/proc mnt/sys mnt/run mnt 2>/dev/null || true
           sudo losetup -d "$LOOP_DEV"
 
       - name: Subir artefacto Web 32-bit
@@ -155,6 +158,7 @@ jobs:
       - name: Compilar perry-pi-os-local-x64.iso
         run: |
           set -e
+          rm -rf iso-build
           mkdir -p iso-build/config/package-lists \
             iso-build/config/includes.chroot_after_packages/usr/local/bin \
             iso-build/config/includes.chroot_after_packages/etc/lightdm/lightdm.conf.d \
@@ -167,6 +171,7 @@ jobs:
             --mirror-chroot http://deb.debian.org/debian \
             --mirror-binary http://deb.debian.org/debian \
             --security false \
+            --apt-indices false \
             --binary-images iso-hybrid \
             --bootappend-live "boot=live components username=perry hostname=perry-pi-os"
 
@@ -274,8 +279,10 @@ jobs:
           sudo debootstrap --arch=amd64 --variant=minbase bookworm mnt http://deb.debian.org/debian
 
           sudo mount --bind /dev mnt/dev
+          sudo mount --bind /dev/pts mnt/dev/pts
           sudo mount --bind /proc mnt/proc
           sudo mount --bind /sys mnt/sys
+          sudo mount --bind /run mnt/run
 
           sudo chroot mnt /bin/bash -s "$LOOP_DEV" << 'CHROOTEOF'
           set -e
@@ -286,8 +293,9 @@ jobs:
           printf 'PRETTY_NAME="Perry Pi OS 1.0 (Normal 64-bit)"\nNAME="Perry Pi OS"\nID=perrypios\n' > /etc/os-release
 
           apt-get update -qq
+          apt-get install -y -qq --no-install-recommends linux-image-amd64
           apt-get install -y -qq --no-install-recommends \
-            linux-image-amd64 grub-pc xorg openbox lxterminal pcmanfm tint2 \
+            grub-pc xorg openbox lxterminal pcmanfm tint2 \
             python3 python3-pip python3-tk espeak-ng lightdm sudo ca-certificates
 
           pip install --break-system-packages --no-cache-dir micropython || true
@@ -308,7 +316,7 @@ jobs:
           rm -rf /var/lib/apt/lists/*
           CHROOTEOF
 
-          sudo umount -lf mnt/dev mnt/proc mnt/sys mnt 2>/dev/null || true
+          sudo umount -lf mnt/dev/pts mnt/dev mnt/proc mnt/sys mnt/run mnt 2>/dev/null || true
           sudo losetup -d "$LOOP_DEV"
 
       - name: Subir artefacto Normal 64-bit
