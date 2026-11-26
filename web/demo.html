@@ -2,40 +2,202 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Perry Pi OS - Live Web Emulator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Perry Pi OS — Live Web Emulator</title>
   <style>
-    body { margin: 0; background: #000; color: #fff; font-family: monospace; display: flex; flex-direction: column; height: 100vh; }
-    header { background: #1e293b; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; }
-    button { background: #38bdf8; border: none; padding: 6px 14px; border-radius: 6px; font-weight: bold; cursor: pointer; }
-    #screen_container { flex: 1; display: flex; justify-content: center; align-items: center; overflow: hidden; }
-    canvas { max-width: 100%; max-height: 100%; }
+    :root {
+      --bg: #050811;
+      --bar: #1e293b;
+      --border: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --sky: #38bdf8;
+      --green: #10b981;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, monospace;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    header {
+      background: var(--bar);
+      padding: 10px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      font-size: 0.9rem;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(16, 185, 129, 0.15);
+      color: #6ee7b7;
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    code {
+      background: #0f172a;
+      padding: 2px 6px;
+      border-radius: 5px;
+      color: var(--sky);
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    button, a.btn-link {
+      background: var(--sky);
+      color: #0f172a;
+      border: none;
+      padding: 7px 13px;
+      border-radius: 7px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      cursor: pointer;
+      text-decoration: none;
+      transition: 0.15s ease;
+    }
+
+    button:hover, a.btn-link:hover { filter: brightness(1.08); }
+
+    a.btn-link {
+      background: #334155;
+      color: var(--text);
+    }
+
+    #screen_container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      padding: 10px;
+      background: #000;
+    }
+
+    #screen_container canvas {
+      max-width: 100%;
+      max-height: 100%;
+      image-rendering: pixelated;
+    }
+
+    .hint-bar {
+      background: #0f172a;
+      border-top: 1px solid var(--border);
+      padding: 6px 18px;
+      font-size: 0.8rem;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
   </style>
   <script src="libv86.js"></script>
 </head>
 <body>
   <header>
-    <div><strong>🍓 Perry Pi OS</strong> | Usuario: <code>perry</code> | Clave: <code>perry</code></div>
-    <div>
-      <button onclick="emulator.restart()">Reiniciar</button>
-      <button onclick="document.getElementById('screen_container').requestFullscreen()">Pantalla Completa</button>
+    <div class="info">
+      <strong>🍓 Perry Pi OS</strong>
+      <span id="emu-status" class="status-badge">● Iniciando motor...</span>
+      <span>Usuario: <code>perry</code></span>
+      <span>Clave: <code>perry</code></span>
+    </div>
+    <div class="actions">
+      <a class="btn-link" href="index.html">← Inicio</a>
+      <button type="button" onclick="window.emulator && window.emulator.restart()">Reiniciar</button>
+      <button type="button" onclick="toggleFullscreen()">Pantalla Completa</button>
     </div>
   </header>
+
   <div id="screen_container">
     <div style="white-space: pre; font: 14px monospace; line-height: 14px"></div>
     <canvas style="display:none"></canvas>
   </div>
+
+  <div class="hint-bar">
+    <span>Haz clic dentro de la pantalla para enfocar el teclado en el emulador.</span>
+    <span>Disco: <code>perry-pi-os-web.img</code> (1.2 GB)</span>
+  </div>
+
   <script>
+    function setStatus(text, isError = false) {
+      const el = document.getElementById("emu-status");
+      if (!el) return;
+      el.textContent = (isError ? "⚠ " : "● ") + text;
+      el.style.background = isError ? "rgba(239, 68, 68, 0.15)" : "rgba(16, 185, 129, 0.15)";
+      el.style.color = isError ? "#fca5a5" : "#6ee7b7";
+      el.style.borderColor = isError ? "rgba(239, 68, 68, 0.35)" : "rgba(16, 185, 129, 0.35)";
+    }
+
+    function toggleFullscreen() {
+      const container = document.getElementById("screen_container");
+      if (!document.fullscreenElement && container && container.requestFullscreen) {
+        container.requestFullscreen().catch(() => {});
+      } else if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+
     window.onload = function() {
-      window.emulator = new V86({
-        wasm_path: "v86.wasm",
-        memory_size: 256 * 1024 * 1024,
-        vga_memory_size: 16 * 1024 * 1024,
-        screen_container: document.getElementById("screen_container"),
-        bios: { url: "seabios.bin" },
-        vga_bios: { url: "vgabios.bin" },
-        hda: { url: "perry-pi-os-web.img", async: true, size: 1258291200 },
-        autostart: true
-      });
+      if (typeof V86 === "undefined") {
+        setStatus("Error: no se cargó libv86.js", true);
+        return;
+      }
+
+      try {
+        window.emulator = new V86({
+          wasm_path: "v86.wasm",
+          memory_size: 256 * 1024 * 1024,
+          vga_memory_size: 16 * 1024 * 1024,
+          screen_container: document.getElementById("screen_container"),
+          bios: { url: "seabios.bin" },
+          vga_bios: { url: "vgabios.bin" },
+          hda: { url: "perry-pi-os-web.img", async: true, size: 1258291200 },
+          autostart: true
+        });
+
+        window.emulator.add_listener("emulator-ready", function() {
+          setStatus("Emulador listo");
+        });
+
+        window.emulator.add_listener("emulator-started", function() {
+          setStatus("Ejecutando");
+        });
+      } catch (err) {
+        setStatus("Error al iniciar V86", true);
+        console.error(err);
+      }
     };
   </script>
 </body>
