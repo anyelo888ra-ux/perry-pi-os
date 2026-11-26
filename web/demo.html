@@ -13,9 +13,10 @@
       --muted: #94a3b8;
       --sky: #38bdf8;
       --green: #10b981;
+      --amber: #f59e0b;
     }
 
-    * { box-sizing: border-box; }
+    *, *::before, *::after { box-sizing: border-box; }
 
     body {
       margin: 0;
@@ -74,7 +75,7 @@
       flex-wrap: wrap;
     }
 
-    button, a.btn-link {
+    button, a.btn-link, label.btn-file {
       background: var(--sky);
       color: #0f172a;
       border: none;
@@ -85,14 +86,25 @@
       cursor: pointer;
       text-decoration: none;
       transition: 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
     }
 
-    button:hover, a.btn-link:hover { filter: brightness(1.08); }
+    button:hover, a.btn-link:hover, label.btn-file:hover { filter: brightness(1.08); }
 
     a.btn-link {
       background: #334155;
       color: var(--text);
     }
+
+    label.btn-file {
+      background: #1e293b;
+      color: var(--sky);
+      border: 1px solid var(--border);
+    }
+
+    #file-input { display: none; }
 
     #screen_container {
       flex: 1;
@@ -103,12 +115,49 @@
       overflow: hidden;
       padding: 10px;
       background: #000;
+      position: relative;
     }
 
     #screen_container canvas {
       max-width: 100%;
       max-height: 100%;
       image-rendering: pixelated;
+    }
+
+    .progress-wrap {
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(460px, 90%);
+      background: rgba(30, 41, 59, 0.95);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      z-index: 10;
+      display: none;
+    }
+
+    .progress-label {
+      font-size: 0.82rem;
+      color: var(--text);
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .progress-track {
+      height: 8px;
+      background: #0f172a;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--sky);
+      transition: width 0.2s ease;
     }
 
     .hint-bar {
@@ -135,29 +184,73 @@
     </div>
     <div class="actions">
       <a class="btn-link" href="index.html">← Inicio</a>
+      <label class="btn-file" for="file-input">📂 Cargar .img / .img.gz</label>
+      <input id="file-input" type="file" accept=".img,.gz" onchange="handleLocalFile(event)">
       <button type="button" onclick="window.emulator && window.emulator.restart()">Reiniciar</button>
       <button type="button" onclick="toggleFullscreen()">Pantalla Completa</button>
     </div>
   </header>
 
   <div id="screen_container">
+    <div id="progress-box" class="progress-wrap">
+      <div class="progress-label">
+        <span id="progress-text">Preparando disco...</span>
+        <span id="progress-pct">0%</span>
+      </div>
+      <div class="progress-track">
+        <div id="progress-fill" class="progress-fill"></div>
+      </div>
+    </div>
     <div style="white-space: pre; font: 14px monospace; line-height: 14px"></div>
     <canvas style="display:none"></canvas>
   </div>
 
   <div class="hint-bar">
     <span>Haz clic dentro de la pantalla para enfocar el teclado en el emulador.</span>
-    <span>Disco: <code>perry-pi-os-web.img</code> (1.2 GB)</span>
+    <span id="disk-label">Disco: <code>perry-pi-os-web.img.gz</code> / <code>perry-pi-os-web.img</code></span>
   </div>
 
   <script>
-    function setStatus(text, isError = false) {
+    const GZIP_URL = "perry-pi-os-web.img.gz";
+    const RAW_URL = "perry-pi-os-web.img";
+
+    function setStatus(text, type = "ok") {
       const el = document.getElementById("emu-status");
       if (!el) return;
-      el.textContent = (isError ? "⚠ " : "● ") + text;
-      el.style.background = isError ? "rgba(239, 68, 68, 0.15)" : "rgba(16, 185, 129, 0.15)";
-      el.style.color = isError ? "#fca5a5" : "#6ee7b7";
-      el.style.borderColor = isError ? "rgba(239, 68, 68, 0.35)" : "rgba(16, 185, 129, 0.35)";
+      if (type === "error") {
+        el.textContent = "⚠ " + text;
+        el.style.background = "rgba(239, 68, 68, 0.15)";
+        el.style.color = "#fca5a5";
+        el.style.borderColor = "rgba(239, 68, 68, 0.35)";
+      } else if (type === "busy") {
+        el.textContent = "⏳ " + text;
+        el.style.background = "rgba(245, 158, 11, 0.15)";
+        el.style.color = "#fcd34d";
+        el.style.borderColor = "rgba(245, 158, 11, 0.35)";
+      } else {
+        el.textContent = "● " + text;
+        el.style.background = "rgba(16, 185, 129, 0.15)";
+        el.style.color = "#6ee7b7";
+        el.style.borderColor = "rgba(16, 185, 129, 0.35)";
+      }
+    }
+
+    function setProgress(visible, label = "", pct = 0) {
+      const box = document.getElementById("progress-box");
+      const txt = document.getElementById("progress-text");
+      const pctEl = document.getElementById("progress-pct");
+      const fill = document.getElementById("progress-fill");
+      if (!box) return;
+      box.style.display = visible ? "block" : "none";
+      if (txt) txt.textContent = label;
+      const clamped = Math.max(0, Math.min(100, Math.round(pct)));
+      if (pctEl) pctEl.textContent = clamped + "%";
+      if (fill) fill.style.width = clamped + "%";
+    }
+
+    function setDiskLabel(text) {
+      const el = document.getElementById("disk-label");
+      if (el) el.innerHTML = "Disco: <code>" + text + "</code>";
     }
 
     function toggleFullscreen() {
@@ -169,33 +262,123 @@
       }
     }
 
+    async function decompressGzipStream(stream, totalBytes, onProgress) {
+      if (typeof DecompressionStream === "undefined") {
+        throw new Error("Tu navegador no soporta DecompressionStream('gzip'). Sube el .img descomprimido.");
+      }
+      const reader = stream.getReader();
+      let received = 0;
+      const metered = new ReadableStream({
+        async start(controller) {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) {
+              controller.close();
+              break;
+            }
+            received += value.byteLength;
+            if (totalBytes > 0 && onProgress) {
+              onProgress((received / totalBytes) * 100, received, totalBytes);
+            }
+            controller.enqueue(value);
+          }
+        }
+      });
+
+      const decompressed = metered.pipeThrough(new DecompressionStream("gzip"));
+      const arrayBuffer = await new Response(decompressed).arrayBuffer();
+      return arrayBuffer;
+    }
+
+    function startEmulatorWithHda(hdaConfig) {
+      if (window.emulator && typeof window.emulator.destroy === "function") {
+        try { window.emulator.destroy(); } catch (_) {}
+      }
+
+      window.emulator = new V86({
+        wasm_path: "v86.wasm",
+        memory_size: 256 * 1024 * 1024,
+        vga_memory_size: 16 * 1024 * 1024,
+        screen_container: document.getElementById("screen_container"),
+        bios: { url: "seabios.bin" },
+        vga_bios: { url: "vgabios.bin" },
+        hda: hdaConfig,
+        autostart: true
+      });
+
+      window.emulator.add_listener("emulator-ready", function() {
+        setStatus("Emulador listo", "ok");
+      });
+
+      window.emulator.add_listener("emulator-started", function() {
+        setProgress(false);
+        setStatus("Ejecutando", "ok");
+      });
+    }
+
+    async function loadFromGzOrRaw() {
+      setStatus("Buscando imagen...", "busy");
+      setProgress(true, "Comprobando perry-pi-os-web.img.gz...", 5);
+
+      try {
+        const resGz = await fetch(GZIP_URL);
+        if (resGz.ok && resGz.body) {
+          const total = Number(resGz.headers.get("Content-Length") || 0);
+          setDiskLabel(GZIP_URL + " (descomprimiendo en memoria)");
+          const rawBuffer = await decompressGzipStream(resGz.body, total, (pct) => {
+            setProgress(true, "Descargando y descomprimiendo .img.gz...", pct);
+          });
+          setProgress(true, "Arrancando emulador con imagen descomprimida...", 100);
+          startEmulatorWithHda({ buffer: rawBuffer });
+          return;
+        }
+      } catch (err) {
+        console.warn("No se pudo cargar/descomprimir .img.gz, probando .img:", err);
+      }
+
+      // Respaldo: usar el .img descomprimido si existe en el servidor
+      setDiskLabel(RAW_URL);
+      setProgress(true, "Cargando perry-pi-os-web.img...", 50);
+      startEmulatorWithHda({ url: RAW_URL, async: true });
+    }
+
+    async function handleLocalFile(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+
+      try {
+        setStatus("Cargando archivo local...", "busy");
+        if (file.name.toLowerCase().endsWith(".gz")) {
+          setDiskLabel(file.name + " (descomprimiendo)");
+          setProgress(true, "Descomprimiendo " + file.name + "...", 10);
+          const rawBuffer = await decompressGzipStream(file.stream(), file.size, (pct) => {
+            setProgress(true, "Descomprimiendo " + file.name + "...", pct);
+          });
+          startEmulatorWithHda({ buffer: rawBuffer });
+        } else {
+          setDiskLabel(file.name);
+          setProgress(true, "Leyendo " + file.name + "...", 40);
+          const rawBuffer = await file.arrayBuffer();
+          startEmulatorWithHda({ buffer: rawBuffer });
+        }
+      } catch (err) {
+        setProgress(false);
+        setStatus(err.message || "Error al cargar archivo", "error");
+        console.error(err);
+      }
+    }
+
     window.onload = function() {
       if (typeof V86 === "undefined") {
-        setStatus("Error: no se cargó libv86.js", true);
+        setStatus("Error: no se cargó libv86.js", "error");
         return;
       }
 
       try {
-        window.emulator = new V86({
-          wasm_path: "v86.wasm",
-          memory_size: 256 * 1024 * 1024,
-          vga_memory_size: 16 * 1024 * 1024,
-          screen_container: document.getElementById("screen_container"),
-          bios: { url: "seabios.bin" },
-          vga_bios: { url: "vgabios.bin" },
-          hda: { url: "perry-pi-os-web.img", async: true, size: 1258291200 },
-          autostart: true
-        });
-
-        window.emulator.add_listener("emulator-ready", function() {
-          setStatus("Emulador listo");
-        });
-
-        window.emulator.add_listener("emulator-started", function() {
-          setStatus("Ejecutando");
-        });
+        loadFromGzOrRaw();
       } catch (err) {
-        setStatus("Error al iniciar V86", true);
+        setProgress(false);
+        setStatus("Error al iniciar V86", "error");
         console.error(err);
       }
     };
