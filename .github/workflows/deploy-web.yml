@@ -27,6 +27,11 @@ jobs:
       - name: Descargar código del repositorio
         uses: actions/checkout@v4
 
+      - name: Verificar carpeta web
+        run: |
+          ls -la web
+          test -f web/demo.html
+
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v5
 
