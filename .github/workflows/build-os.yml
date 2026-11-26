@@ -109,7 +109,9 @@ jobs:
           apt-get update -qq
           apt-get install -y -qq --no-install-recommends \
             linux-image-686 grub-pc xorg openbox lxterminal pcmanfm tint2 \
-            micropython python3 python3-tk espeak-ng netsurf-gtk lightdm sudo ca-certificates
+            python3 python3-pip python3-tk espeak-ng netsurf-gtk lightdm sudo ca-certificates
+
+          pip install --break-system-packages --no-cache-dir micropython || true
 
           sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=""/' /etc/default/grub
           sed -i 's/GRUB_TIMEOUT=.*/GRUB_TIMEOUT=1/' /etc/default/grub
@@ -153,19 +155,31 @@ jobs:
       - name: Compilar perry-pi-os-local-x64.iso
         run: |
           set -e
-          mkdir -p iso-build/config/package-lists iso-build/config/includes.chroot_after_packages/usr/local/bin iso-build/config/includes.chroot_after_packages/etc/lightdm/lightdm.conf.d iso-build/config/includes.chroot_after_packages/home/perry/.config/openbox
+          mkdir -p iso-build/config/package-lists \
+            iso-build/config/includes.chroot_after_packages/usr/local/bin \
+            iso-build/config/includes.chroot_after_packages/etc/lightdm/lightdm.conf.d \
+            iso-build/config/includes.chroot_after_packages/home/perry/.config/openbox \
+            iso-build/config/hooks/live
           cd iso-build
 
           lb config --mode debian --architecture amd64 --distribution bookworm \
             --mirror-bootstrap http://deb.debian.org/debian \
             --mirror-chroot http://deb.debian.org/debian \
             --mirror-binary http://deb.debian.org/debian \
+            --security false \
             --binary-images iso-hybrid \
             --bootappend-live "boot=live components username=perry hostname=perry-pi-os"
 
           cat << 'EOF' > config/package-lists/perry.list.chroot
-          xorg openbox lxterminal pcmanfm tint2 chromium micropython python3 python3-tk espeak-ng lightdm sudo
+          xorg openbox lxterminal pcmanfm tint2 chromium python3 python3-pip python3-tk espeak-ng lightdm sudo
           EOF
+
+          cat << 'HOOKEOF' > config/hooks/live/01-micropython.hook.chroot
+          #!/bin/sh
+          set -e
+          pip install --break-system-packages --no-cache-dir micropython || true
+          HOOKEOF
+          chmod +x config/hooks/live/01-micropython.hook.chroot
 
           cat << 'PYEOF' > config/includes.chroot_after_packages/usr/local/bin/yonata-welcome.py
           import tkinter as tk
@@ -274,7 +288,9 @@ jobs:
           apt-get update -qq
           apt-get install -y -qq --no-install-recommends \
             linux-image-amd64 grub-pc xorg openbox lxterminal pcmanfm tint2 \
-            micropython python3 python3-tk espeak-ng lightdm sudo ca-certificates
+            python3 python3-pip python3-tk espeak-ng lightdm sudo ca-certificates
+
+          pip install --break-system-packages --no-cache-dir micropython || true
 
           sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=""/' /etc/default/grub
           sed -i 's/GRUB_TIMEOUT=.*/GRUB_TIMEOUT=1/' /etc/default/grub
