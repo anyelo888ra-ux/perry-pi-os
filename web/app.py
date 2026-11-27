@@ -1,43 +1,44 @@
+import functools
 import http.server
-import socketserver
+import mimetypes
 import os
 import re
-import mimetypes
+import socketserver
+from pathlib import Path
 
-PORT = 8080
+HOST = os.environ.get("HOST", "127.0.0.1")
+PORT = int(os.environ.get("PORT", "8080"))
+WEB_ROOT = Path(__file__).resolve().parent
 
 mimetypes.add_type("application/wasm", ".wasm")
 mimetypes.add_type("application/javascript", ".js")
 mimetypes.add_type("application/octet-stream", ".img")
 mimetypes.add_type("application/octet-stream", ".bin")
+mimetypes.add_type("application/gzip", ".gz")
 
 
-class ThreadingHTTPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+class ThreadingHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
     allow_reuse_address = True
     daemon_threads = True
 
 
 class RangeHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
-    def guess_type(self, path):
-        guessed, _ = mimetypes.guess_type(path)
-        if guessed:
-            return guessed
-        return super().guess_type(path)
-
     def end_headers(self):
         self.send_header("Accept-Ranges", "bytes")
         self.send_header("Access-Control-Allow-Origin", "*")
         super().end_headers()
 
+    def _range_not_satisfiable(self, file_size):
+        self.send_response(416)
+        self.send_header("Content-Range", f"bytes */{file_size}")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+        return None
+
     def send_head(self):
         path = self.translate_path(self.path)
         if os.path.isdir(path):
-            for index_name in ("index.html", "index.htm"):
-                candidate = os.path.join(path, index_name)
-                if os.path.isfile(candidate):
-                    path = candidate
-                    break
-
+            return super().send_head()
         if not os.path.isfile(path):
             return super().send_head()
 
@@ -45,35 +46,57 @@ class RangeHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         range_header = self.headers.get("Range")
 
         if range_header:
-            match = re.match(r"bytes=(\d+)-(\d*)", range_header.strip())
-            if match:
-                start = int(match.group(1))
-                end = int(match.group(2)) if match.group(2) else file_size - 1
+            # This server supports one byte range per request.
+            match = re.fullmatch(r"bytes=(\\d*)-(\\d*)", range_header.strip())
+            if not match or "," in range_header:
+                return self._range_not_satisfiable(file_size)
 
-                if start >= file_size or end >= file_size or start > end:
-                    self.send_response(416)
-                    self.send_header("Content-Range", f"bytes */{file_size}")
-                    self.end_headers()
-                    return None
+            first, last = match.groups()
+            if not first and not last:
+                return self._range_not_satisfiable(file_size)
 
-                length = end - start + 1
-                f = open(path, "rb")
-                f.seek(start)
-                self.send_response(206)
-                self.send_header("Content-type", self.guess_type(path))
-                self.send_header("Content-Range", f"bytes {start}-{end}/{file_size}")
-                self.send_header("Content-Length", str(length))
-                self.end_headers()
-                return f
+            if not first:
+                suffix_length = int(last)
+                if suffix_length <= 0:
+                    return self._range_not_satisfiable(file_size)
+                start = max(file_size - suffix_length, 0)
+                end = file_size - 1
+            else:
+                start = int(first)
+                if start >= file_size:
+                    return self._range_not_satisfiable(file_size)
+                end = int(last) if last else file_size - 1
+                if end < start:
+                    return self._range_not_satisfiable(file_size)
+                end = min(end, file_size - 1)
 
-        f = open(path, "rb")
+            length = end - start + 1
+            try:
+                file_obj = open(path, "rb")
+                file_obj.seek(start)
+            except OSError:
+                return self._range_not_satisfiable(file_size)
+
+            self.send_response(206)
+            self.send_header("Content-Type", self.guess_type(path))
+            self.send_header("Content-Range", f"bytes {start}-{end}/{file_size}")
+            self.send_header("Content-Length", str(length))
+            self.end_headers()
+            return file_obj
+
+        try:
+            file_obj = open(path, "rb")
+        except OSError:
+            self.send_error(404, "File not found")
+            return None
+
         self.send_response(200)
-        self.send_header("Content-type", self.guess_type(path))
+        self.send_header("Content-Type", self.guess_type(path))
         self.send_header("Content-Length", str(file_size))
         self.end_headers()
-        return f
+        return file_obj
 
-    def log_message(self, format, *args):
+    def log_message(self, format_string, *args):
         if args and str(args[0]).startswith(("GET ", "HEAD ")):
             parts = str(args[0]).split()
             status = args[1] if len(args) > 1 else ""
@@ -82,9 +105,11 @@ class RangeHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    with ThreadingHTTPServer(("", PORT), RangeHTTPRequestHandler) as httpd:
-        print(f"Perry Pi OS Web Server activo en http://localhost:{PORT}")
+    handler = functools.partial(RangeHTTPRequestHandler, directory=str(WEB_ROOT))
+    with ThreadingHTTPServer((HOST, PORT), handler) as httpd:
+        print(f"Perry Pi OS Web Server activo en http://{HOST}:{PORT}")
+        print(f"Sirviendo archivos desde: {WEB_ROOT}")
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:
-            print("\nServidor detenido.")
+            print("\\nServidor detenido.")
