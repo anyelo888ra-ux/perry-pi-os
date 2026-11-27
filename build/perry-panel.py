@@ -79,6 +79,7 @@ class PerryPanel:
         tk.Label(head,text=f"{getpass.getuser()}\nPerry Pi OS",justify="left",font=("Sans",11,"bold"),bg="#20334e",fg=FG).pack(side="left",padx=12)
         search=tk.Entry(self.menu,font=("Sans",10),bg="#0d1726",fg=FG,insertbackground=FG,relief="flat")
         search.pack(fill="x",padx=12,pady=10,ipady=8); search.insert(0,"Buscar aplicaciones...")
+        search.bind("<FocusIn>",lambda e:search.delete(0,"end") if search.get()=="Buscar aplicaciones..." else None)
         area=tk.Frame(self.menu,bg=PANEL); area.pack(fill="both",expand=True,padx=10)
         def render(query=""):
             for child in area.winfo_children(): child.destroy()
