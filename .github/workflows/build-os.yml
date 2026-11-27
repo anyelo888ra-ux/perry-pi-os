@@ -39,7 +39,8 @@ jobs:
             curl -fsSL "https://raw.githubusercontent.com/anyelo888ra-ux/perry-pi-os/main/wallpaper.png" -o wallpaper.png
           fi
 
-          cp build/yonata-welcome.py yonata.py
+          python3 -m py_compile build/yonata-welcome.py build/perry-explorer.py build/perry-panel.py
+                    cp build/yonata-welcome.py yonata.py
           cp build/perry-explorer.py perry-explorer.py
           cp build/perry-panel.py perry-panel.py
 
@@ -322,7 +323,8 @@ jobs:
           apt-get install -y -qq --no-install-recommends \
             grub-pc xorg openbox lxterminal pcmanfm tint2 mousepad chromium \
             galculator viewnior htop feh procps \
-            python3 python3-tk espeak-ng lightdm sudo ca-certificates dbus-x11
+            python3 python3-tk espeak-ng lightdm sudo ca-certificates dbus-x11 \
+            locales x11-xkb-utils xarchiver lxappearance
 
           sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT="console=ttyS0,115200 console=tty0"/' /etc/default/grub
           sed -i 's/GRUB_TIMEOUT=.*/GRUB_TIMEOUT=1/' /etc/default/grub
