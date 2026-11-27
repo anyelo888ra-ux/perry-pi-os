@@ -414,7 +414,8 @@
         throw new Error("La imagen está vacía o no es un archivo de disco válido.");
       }
       hideFallback();
-      savedRawBuffer = cloneArrayBuffer(rawBuffer);
+      // Conserva una sola copia del disco: las imágenes pueden ocupar varios GB.
+      savedRawBuffer = rawBuffer;
       if (labelText) setDiskLabel(labelText);
 
       if (bootTimeoutId) {
@@ -437,7 +438,7 @@
           screen_container: document.getElementById("screen_container"),
           bios: { url: "seabios.bin" },
           vga_bios: { url: "vgabios.bin" },
-          hda: { buffer: cloneArrayBuffer(savedRawBuffer) },
+          hda: { buffer: savedRawBuffer },
           autostart: true
         });
       } catch (error) {
@@ -561,14 +562,10 @@
 
       if (isGz) {
         const total = Number(res.headers.get("Content-Length") || 0);
-        const compressed = await readResponseWithProgress(res, (pct) => {
-          setProgress(true, "Descargando " + src.label + "...", pct);
-        });
-        const rawBuffer = await decompressGzipStream(
-          new Response(compressed).body,
-          total || compressed.byteLength,
-          (pct) => setProgress(true, "Descomprimiendo " + src.label + "...", pct)
-        );
+        const onProgress = (pct) => setProgress(true, "Descargando y descomprimiendo " + src.label + "...", pct);
+        const rawBuffer = res.body
+          ? await decompressGzipStream(res.body, total, onProgress)
+          : await decompressGzipStream(new Response(await res.arrayBuffer()).body, total, onProgress);
         startEmulatorWithBuffer(rawBuffer, src.label + " (descomprimido)");
         return;
       }
