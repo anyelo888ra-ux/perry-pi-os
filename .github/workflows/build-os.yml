@@ -17,6 +17,7 @@ on:
       - "build/**"
       - ".github/workflows/build-os.yml"
       - "wallpaper.png"
+      - "wallpapers/**"
 
 permissions:
   contents: read
@@ -306,6 +307,7 @@ jobs:
 
           sudo mkdir -p mnt/usr/share/backgrounds/perry-pi-os mnt/usr/local/bin
           sudo cp wallpaper.png mnt/usr/share/backgrounds/perry-pi-os/wallpaper.png
+          if compgen -G "wallpapers/*.png" > /dev/null; then sudo cp wallpapers/*.png mnt/usr/share/backgrounds/perry-pi-os/; fi
 
           sudo cp build/yonata-welcome.py mnt/usr/local/bin/yonata-welcome.py
           sudo cp build/perry-explorer.py mnt/usr/local/bin/perry-explorer.py
