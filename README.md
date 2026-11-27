@@ -15,6 +15,8 @@ Sistema operativo ligero basado en **Debian 12 (Bookworm)** con entorno **Xorg +
 * No se publica una contraseña predeterminada para el usuario ni para `root`.
 * Tras configurar el usuario, la sesión gráfica queda preparada para usar Openbox y la barra `tint2`.
 
+**Aviso de seguridad pendiente:** la cuenta temporal `perry-system` se inicia automáticamente y conserva una regla `NOPASSWD` para el asistente. Esta revisión aún no revoca esa regla al finalizar Yonata. No distribuyas ni expongas estas imágenes en equipos conectados a redes no confiables hasta corregir ese punto.
+
 La configuración de instalación manual en `build/preseed.cfg` solicita las contraseñas durante el proceso; no contiene credenciales compartidas.
 
 ## Probar en QEMU (Consola y Visual)
