@@ -1,70 +1,82 @@
 # Perry Pi OS
-[![Compilar Perry Pi OS (Web 32-bit, ISO 64-bit y Normal 64-bit)](https://github.com/anyelo888ra-ux/perry-pi-os/actions/workflows/build-os.yml/badge.svg)](https://github.com/anyelo888ra-ux/perry-pi-os/actions/workflows/build-os.yml)
 
-Sistema operativo ligero basado en **Debian 12 (Bookworm)** con entorno **Xorg + Openbox + Perry Panel**, asistente de bienvenida/voz **Yonata** (`espeak-ng` + `tkinter`) y compilación automatizada mediante **GitHub Actions**.
+<p align="center">
+  <img src="wallpaper.png" alt="Perry Pi OS — fondo oficial" width="100%">
+</p>
 
-## Ediciones y compilaciones
+<p align="center">
+  <strong>Tu espacio para desarrollar en Linux.</strong><br>
+  Sistema ligero basado en Debian 12 (Bookworm), con Openbox, Perry Panel y el asistente Yonata.
+</p>
 
-* **Web 32-bit (`perry-pi-os-web.img`):** Imagen de disco MBR (`i386` / `linux-image-686`) pensada para pruebas en QEMU y entornos web, con `netsurf-gtk`, `mousepad`, `pcmanfm`, `lxterminal`, `galculator`, `viewnior`, `htop` y **Yonata**.
-* **Local ISO 64-bit (`perry-pi-os-local-x64.iso`):** Imagen híbrida booteable (`amd64` / `live-build`) con `chromium`, `mousepad`, `pcmanfm`, `lxterminal`, `galculator`, `viewnior`, `htop` y **Yonata**.
-* **Normal 64-bit (`perry-pi-os-normal-x64.img`):** Imagen de disco instalada (`amd64` / `linux-image-amd64`) con las mismas herramientas de escritorio, utilidades y asistente **Yonata**.
+<p align="center">
+  <a href="https://github.com/anyelo888ra-ux/perry-pi-os/actions/workflows/build-os.yml">
+    <img src="https://github.com/anyelo888ra-ux/perry-pi-os/actions/workflows/build-os.yml/badge.svg" alt="Estado de compilación">
+  </a>
+</p>
 
-## Escritorio y primer inicio
+## Ediciones
 
-Perry Pi OS usa un escritorio ligero basado en Openbox. Al primer inicio, Yonata muestra una introducción y un asistente de configuración con progreso por etapas. Permite seleccionar:
+| Edición | Arquitectura | Uso |
+|---|---|---|
+| **Web** | 32-bit i386 | Imagen de disco para QEMU y pruebas web |
+| **Local ISO** | 64-bit amd64 | ISO híbrida para arrancar desde USB o máquina virtual |
+| **Normal** | 64-bit amd64 | Imagen de disco instalada |
 
-- Español (Venezuela) o Español (España), además de inglés de Estados Unidos y Reino Unido.
-- Teclado latinoamericano, español o inglés estadounidense.
-- Zona horaria de Caracas, Madrid, Nueva York o UTC.
-- Usuario, contraseña y acceso automático opcional.
+Las compilaciones se generan mediante GitHub Actions y se publican en [Releases](https://github.com/anyelo888ra-ux/perry-pi-os/releases).
 
-Al terminar, Yonata configura el idioma, la zona horaria y la sesión, y revoca los permisos temporales del usuario de instalación.
+## Escritorio Perry
 
-El panel inferior incluye un menú de inicio, búsqueda de aplicaciones, accesos fijados, indicador de perfil y reloj. El menú de sesión ofrece cerrar sesión, suspender, reiniciar y apagar.
+- **Perry Panel:** menú Inicio, búsqueda de aplicaciones, accesos rápidos, perfil, reloj y controles de sesión.
+- **Yonata:** asistente de primer inicio para idioma, teclado, zona horaria, usuario y contraseña.
+- **Openbox + Xorg:** escritorio ligero pensado también para equipos modestos.
+- **Aplicaciones:** Chromium o NetSurf según edición, PCManFM, LXTerminal, Mousepad, Galculator, Viewnior, htop, Xarchiver y LXAppearance.
 
-Aplicaciones incluidas según la edición: navegador (Chromium o NetSurf), PCManFM, LXTerminal, Mousepad, Galculator, Viewnior, htop, Xarchiver y LXAppearance.
+## Personalización de fondos
 
-## Primer inicio y cuentas
+El fondo predeterminado se encuentra en `wallpaper.png`. Los fondos adicionales en formato PNG que se coloquen en `wallpapers/` se copiarán automáticamente a:
 
-* Las imágenes generadas por GitHub Actions inician en una sesión temporal de configuración llamada `perry-system`.
-* **Yonata** solicita crear el usuario personal y su contraseña durante el primer inicio.
-* No se publica una contraseña predeterminada para el usuario ni para `root`.
-* Tras configurar el usuario, la sesión gráfica queda preparada para Openbox y Perry Panel.
+`/usr/share/backgrounds/perry-pi-os/`
 
-La configuración de instalación manual en `build/preseed.cfg` solicita las contraseñas durante el proceso; no contiene credenciales compartidas.
+Después pueden seleccionarse desde **Perry → Fondos de pantalla**. Si la carpeta todavía no contiene fondos adicionales, el selector mostrará un aviso y el sistema conservará el fondo predeterminado.
 
-## Probar en QEMU (Consola y Visual)
+## Yonata: configuración inicial
 
-### Modo consola (`-nographic`) en terminal
+En el primer inicio, Yonata permite elegir:
+
+- Español (Venezuela), Español (España), English (US) o English (UK).
+- Teclado latinoamericano, español o estadounidense.
+- Zona horaria Caracas, Madrid, Nueva York o UTC.
+- Nombre de usuario, contraseña y acceso automático opcional.
+
+Al finalizar, configura la sesión personal y revoca los permisos temporales de la cuenta de instalación.
+
+## Probar Perry Pi OS
+
+### Web 32-bit en QEMU
+
 ```bash
 qemu-system-i386 \
   -m 512M \
-  -drive file=~/Downloads/os/perry-pi-os-web.img,format=raw,if=ide \
-  -boot c \
-  -nographic \
-  -net nic,model=e1000 -net user
-
+  -drive file=perry-pi-os-web.img,format=raw,if=ide \
+  -boot c -vga std
 ```
 
-*(Para salir de QEMU en modo consola: `Ctrl + A`, suelta y presiona `X`.)*
+Para salir de QEMU en modo consola: `Ctrl+A`, suelta y pulsa `X`.
 
-### Modo gráfico (`DISPLAY=:1`)
+## Compilar desde GitHub
 
-```bash
-export DISPLAY=:1
-qemu-system-i386 \
-  -m 512M \
-  -drive file=~/Downloads/os/perry-pi-os-web.img,format=raw,if=ide \
-  -boot c \
-  -vga std \
-  -net nic,model=e1000 -net user
+1. Abre **Actions → Compilar Perry Pi OS**.
+2. Selecciona **Run workflow**.
+3. Espera a que terminen los tres trabajos de compilación.
+4. Descarga los artefactos o visita **Releases**.
 
-```
+El workflow también se ejecuta al actualizar `build/**`, `wallpaper.png`, `wallpapers/**` o el propio workflow en `main`.
 
-## Compilación con GitHub Actions
+## Estado del proyecto
 
-El workflow en `.github/workflows/build-os.yml` compila los tres objetivos (`build-web-32bit`, `build-iso-64bit` y `build-normal-64bit`), sube los artefactos y publica las imágenes comprimidas (`.img.gz` / `.iso`) en la release `latest`.
+Perry Pi OS está en desarrollo. Las imágenes deben probarse en una máquina virtual y en el hardware objetivo antes de usarse como sistema principal. Las ediciones actuales son para **i386 y amd64**; todavía no son imágenes ARM oficiales para Raspberry Pi.
 
-* Se ejecuta manualmente desde **Actions -> Run workflow** (`workflow_dispatch`).
-* También se dispara automáticamente al hacer `push` a `main` si cambian archivos en `build/**`, `wallpaper.png` o `.github/workflows/build-os.yml`.
-* La publicación `latest` solo ocurre cuando los tres trabajos de compilación terminan correctamente.
+## Contribuir
+
+Las mejoras al escritorio, Yonata, documentación, compatibilidad y aplicaciones son bienvenidas. Consulta los archivos de `build/` y el workflow antes de proponer cambios.

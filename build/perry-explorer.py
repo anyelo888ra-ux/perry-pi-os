@@ -2,8 +2,19 @@
 import os, shutil, subprocess, time
 WALLPAPER_PATHS=[os.path.expanduser("~/.local/share/backgrounds/wallpaper.png"),"/usr/share/backgrounds/perry-pi-os/wallpaper.png"]
 def apply_wallpaper():
-    wp=next((p for p in WALLPAPER_PATHS if os.path.exists(p)),None)
-    if wp and shutil.which("feh"): subprocess.run(["feh","--bg-fill",wp],check=False)
+    selected=os.path.expanduser("~/.config/perry/wallpaper")
+    wp=None
+    try:
+        with open(selected,encoding="utf-8") as f:
+            candidate=f.read().strip()
+        if candidate and os.path.isfile(candidate):
+            wp=candidate
+    except OSError:
+        pass
+    if not wp:
+        wp=next((p for p in WALLPAPER_PATHS if os.path.exists(p)),None)
+    if wp and shutil.which("feh"):
+        subprocess.run(["feh","--bg-fill",wp],check=False)
 def running(name):
     return subprocess.run(["pgrep","-f",f"/usr/local/bin/{name}"],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode==0
 def main():
