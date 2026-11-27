@@ -123,7 +123,7 @@ class PerryPanel:
         os.makedirs(config,exist_ok=True)
         try:
             with open(os.path.join(config,"wallpaper"),"w",encoding="utf-8") as f:
-                f.write(path+"\\n")
+                f.write(path+"\n")
             subprocess.Popen(["feh","--bg-fill",path],start_new_session=True)
         except OSError as exc:
             messagebox.showerror("Perry Pi OS",str(exc))
