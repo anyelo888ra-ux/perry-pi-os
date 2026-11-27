@@ -23,7 +23,7 @@
 | **Local ISO** | 64-bit amd64 | ISO híbrida para arrancar desde USB o máquina virtual |
 | **Normal** | 64-bit amd64 | Imagen de disco instalada |
 
-Las compilaciones se generan mediante GitHub Actions y se publican en [Releases](https://github.com/anyelo888ra-ux/perry-pi-os/releases).
+Las compilaciones se generan mediante GitHub Actions. La descarga más reciente está en [Releases → latest](https://github.com/anyelo888ra-ux/perry-pi-os/releases/tag/latest).
 
 ## Escritorio Perry
 
