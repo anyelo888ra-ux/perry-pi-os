@@ -42,11 +42,11 @@ jobs:
           from pathlib import Path
           import re
           html = Path("web/demo.html").read_text(encoding="utf-8")
-          scripts = re.findall(r"<script(?:\\s[^>]*)?>(.*?)</script>", html, flags=re.I | re.S)
+          scripts = re.findall(r"<script(?:\s[^>]*)?>(.*?)</script>", html, flags=re.I | re.S)
           inline_scripts = [script for script in scripts if script.strip()]
           if not inline_scripts:
               raise SystemExit("No se encontró el JavaScript de la demo")
-          Path("/tmp/perry-demo-inline.js").write_text("\\n;\\n".join(inline_scripts), encoding="utf-8")
+          Path("/tmp/perry-demo-inline.js").write_text("\n;\n".join(inline_scripts), encoding="utf-8")
           PY
           node --check /tmp/perry-demo-inline.js
 
