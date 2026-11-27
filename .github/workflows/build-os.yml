@@ -39,211 +39,11 @@ jobs:
             curl -fsSL "https://raw.githubusercontent.com/anyelo888ra-ux/perry-pi-os/main/wallpaper.png" -o wallpaper.png
           fi
 
-          cat << 'PYEOF' > yonata.py
-          import tkinter as tk
-          from tkinter import ttk, messagebox
-          import subprocess, threading, platform, os, shutil, re
+          python3 -m py_compile build/yonata-welcome.py build/perry-explorer.py build/perry-panel.py
+          cp build/yonata-welcome.py yonata.py
+          cp build/perry-explorer.py perry-explorer.py
+          cp build/perry-panel.py perry-panel.py
 
-          WALLPAPER = "/usr/share/backgrounds/perry-pi-os/wallpaper.png"
-
-          def hablar(t):
-              if shutil.which("espeak-ng"):
-                  threading.Thread(
-                      target=lambda: subprocess.run(["espeak-ng", "-v", "es", "-s", "145", t], check=False),
-                      daemon=True
-                  ).start()
-
-          class Yonata:
-              def __init__(self, r):
-                  self.r = r
-                  r.title("Yonata - Instalador Perry Pi OS")
-                  r.geometry("600x520")
-                  r.configure(bg="#0f172a")
-
-                  tk.Label(
-                      r, text="Hola, soy Yonata",
-                      font=("Sans", 19, "bold"), fg="#38bdf8", bg="#0f172a"
-                  ).pack(pady=(18, 4))
-                  tk.Label(
-                      r, text="Perry Pi OS • Sesión temporal: perry-system (sin contraseña)",
-                      font=("Sans", 9), fg="#94a3b8", bg="#0f172a"
-                  ).pack()
-
-                  self.mode_var = tk.StringVar(value="local")
-                  mode_frame = tk.Frame(r, bg="#0f172a")
-                  mode_frame.pack(pady=8)
-                  tk.Radiobutton(
-                      mode_frame, text="Instalación Local (Activa)", variable=self.mode_var, value="local",
-                      bg="#0f172a", fg="#e2e8f0", selectcolor="#1e293b", activebackground="#0f172a"
-                  ).pack(side="left", padx=8)
-                  tk.Radiobutton(
-                      mode_frame, text="Cloud (Próximamente)", variable=self.mode_var, value="cloud", state="disabled",
-                      bg="#0f172a", fg="#64748b", selectcolor="#1e293b"
-                  ).pack(side="left", padx=8)
-
-                  form = tk.Frame(r, bg="#1e293b", padx=16, pady=12)
-                  form.pack(padx=30, fill="x")
-
-                  tk.Label(form, text="Nuevo Usuario:", fg="#e2e8f0", bg="#1e293b", font=("Sans", 10, "bold")).grid(row=0, column=0, sticky="w", pady=4)
-                  self.user_entry = tk.Entry(form, width=28, font=("Sans", 10))
-                  self.user_entry.insert(0, "perry")
-                  self.user_entry.grid(row=0, column=1, padx=8, pady=4)
-
-                  tk.Label(form, text="Contraseña:", fg="#e2e8f0", bg="#1e293b", font=("Sans", 10, "bold")).grid(row=1, column=0, sticky="w", pady=4)
-                  self.pass_entry = tk.Entry(form, width=28, font=("Sans", 10), show="*")
-                  self.pass_entry.grid(row=1, column=1, padx=8, pady=4)
-
-                  self.login_visual_var = tk.BooleanVar(value=True)
-                  tk.Checkbutton(
-                      form, text="Activar pantalla de login visual tras crear usuario",
-                      variable=self.login_visual_var, bg="#1e293b", fg="#cbd5e1",
-                      selectcolor="#0f172a", activebackground="#1e293b"
-                  ).grid(row=2, column=0, columnspan=2, sticky="w", pady=(6, 0))
-
-                  self.desc = tk.Label(
-                      r, text="Mini instalación rápida (1 a 5 min según internet) y creación de usuario.",
-                      font=("Sans", 10), fg="#e2e8f0", bg="#0f172a", wraplength=540
-                  )
-                  self.desc.pack(pady=10)
-
-                  self.pb = ttk.Progressbar(r, length=440, mode="determinate")
-                  self.pb.pack(pady=6)
-
-                  btn_frame = tk.Frame(r, bg="#0f172a")
-                  btn_frame.pack(pady=10)
-
-                  self.btn = tk.Button(
-                      btn_frame, text="Instalar y Crear Usuario", bg="#10b981", fg="#fff",
-                      font=("Sans", 10, "bold"), relief="flat", padx=16, pady=8, command=self.start_install
-                  )
-                  self.btn.pack(side="left", padx=6)
-
-                  self.term_btn = tk.Button(
-                      btn_frame, text="Abrir Terminal", bg="#334155", fg="#fff",
-                      font=("Sans", 10, "bold"), relief="flat", padx=14, pady=8,
-                      command=lambda: subprocess.Popen(["lxterminal"], start_new_session=True)
-                  )
-                  self.term_btn.pack(side="left", padx=6)
-
-                  r.after(500, lambda: hablar("Hola, soy Yonata. Configura tu usuario y contraseña para instalar Perry Pi OS."))
-
-              def start_install(self):
-                  username = self.user_entry.get().strip()
-                  password = self.pass_entry.get()
-                  if not re.match(r"^[a-z_][a-z0-9_-]{0,31}$", username) or username == "perry-system":
-                      messagebox.showerror("Usuario inválido", "Usa un nombre válido. 'perry-system' está reservado para el asistente.")
-                      return
-                  if len(password) < 1:
-                      messagebox.showerror("Contraseña requerida", "Escribe una contraseña para el nuevo usuario.")
-                      return
-
-                  self.btn.config(state="disabled")
-                  self.pb["value"] = 15
-                  self.desc.config(text=f"Arquitectura: {platform.machine()} | Preparando usuario '{username}'...")
-                  hablar(f"Iniciando instalación para el usuario {username}.")
-                  threading.Thread(target=self._worker, args=(username, password, self.login_visual_var.get()), daemon=True).start()
-
-              def _worker(self, username, password, visual_login):
-                  try:
-                      # Crear usuario si no existe y asignar contraseña + sudo
-                      subprocess.run(["sudo", "useradd", "-m", "-s", "/bin/bash", "-G", "sudo", username], check=True)
-                      proc = subprocess.run(
-                          ["sudo", "chpasswd"],
-                          input=f"{username}:{password}\n".encode("utf-8"),
-                          check=True
-                      )
-                      self.r.after(0, lambda: self.pb.config(value=55))
-                      self.r.after(0, lambda: self.desc.config(text="Configurando wallpaper y supervisor explorer..."))
-
-                      new_home = f"/home/{username}"
-                      os.makedirs(f"{new_home}/.config/openbox", exist_ok=True)
-                      os.makedirs(f"{new_home}/Desktop", exist_ok=True)
-
-                      if os.path.exists(WALLPAPER):
-                          os.makedirs(f"{new_home}/.local/share/backgrounds", exist_ok=True)
-                          shutil.copy2(WALLPAPER, f"{new_home}/.local/share/backgrounds/wallpaper.png")
-
-                      autostart_content = (
-                          "python3 /usr/local/bin/perry-explorer.py &\n"
-                          f"if [ ! -f \"$HOME/.perry_welcome_done\" ]; then\n"
-                          "  python3 /usr/local/bin/yonata-welcome.py &\n"
-                          "fi\n"
-                      )
-                      with open(f"{new_home}/.config/openbox/autostart", "w", encoding="utf-8") as f:
-                          f.write(autostart_content)
-
-                      with open(os.path.join(new_home, ".perry_welcome_done"), "w", encoding="utf-8") as f:
-                          f.write("ok")
-                      subprocess.run(["sudo", "chown", "-R", f"{username}:{username}", new_home], check=True)
-
-                      # Configurar LightDM: login visual o autologin al nuevo usuario
-                      if visual_login:
-                          lightdm_conf = "[Seat:*]\nautologin-user=\nuser-session=openbox\n"
-                      else:
-                          lightdm_conf = f"[Seat:*]\nautologin-user={username}\nautologin-user-timeout=0\nuser-session=openbox\n"
-
-                      with open("/tmp/perry-lightdm.conf", "w", encoding="utf-8") as f:
-                          f.write(lightdm_conf)
-                      subprocess.run(["sudo", "mv", "/tmp/perry-lightdm.conf", "/etc/lightdm/lightdm.conf.d/99-perry.conf"], check=True)
-
-                      self.r.after(0, self._done, username, visual_login)
-                  except Exception as e:
-                      message = str(e)
-                      self.r.after(0, lambda: messagebox.showerror("Error", message))
-                      self.r.after(0, lambda: self.btn.config(state="normal"))
-
-              def _done(self, username, visual_login):
-                  self.pb["value"] = 100
-                  msg = (
-                      f"Usuario '{username}' creado. Reinicia o cierra sesión para ver el login visual."
-                      if visual_login else
-                      f"Usuario '{username}' creado y configurado. ¡Listo!"
-                  )
-                  self.desc.config(text=msg)
-                  hablar("Instalación completada.")
-                  self.btn.config(text="Cerrar Asistente", bg="#3b82f6", state="normal", command=self.r.destroy)
-
-          if __name__ == "__main__":
-              root = tk.Tk()
-              Yonata(root)
-              root.mainloop()
-          PYEOF
-
-          cat << 'EXPEOF' > perry-explorer.py
-          import os, shutil, subprocess, time
-
-          WALLPAPER_PATHS = [
-              os.path.expanduser("~/.local/share/backgrounds/wallpaper.png"),
-              "/usr/share/backgrounds/perry-pi-os/wallpaper.png",
-          ]
-
-          def apply_wallpaper():
-              wp = next((p for p in WALLPAPER_PATHS if os.path.exists(p)), None)
-              if not wp:
-                  return
-              if shutil.which("feh"):
-                  subprocess.run(["feh", "--bg-fill", wp], check=False)
-              elif shutil.which("xwallpaper"):
-                  subprocess.run(["xwallpaper", "--zoom", wp], check=False)
-
-          def is_running(proc_name):
-              res = subprocess.run(["pgrep", "-x", proc_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-              return res.returncode == 0
-
-          def main():
-              apply_wallpaper()
-              last_wp_check = time.time()
-              while True:
-                  if not is_running("tint2") and shutil.which("tint2"):
-                      subprocess.Popen(["tint2"], start_new_session=True)
-                  if time.time() - last_wp_check > 15:
-                      apply_wallpaper()
-                      last_wp_check = time.time()
-                  time.sleep(3)
-
-          if __name__ == "__main__":
-              main()
-          EXPEOF
 
       - name: Construir perry-pi-os-web.img
         run: |
@@ -285,6 +85,7 @@ jobs:
           sudo cp wallpaper.png mnt/usr/share/backgrounds/perry-pi-os/wallpaper.png
           sudo cp yonata.py mnt/usr/local/bin/yonata-welcome.py
           sudo cp perry-explorer.py mnt/usr/local/bin/perry-explorer.py
+          sudo cp perry-panel.py mnt/usr/local/bin/perry-panel.py
 
           sudo chroot mnt /bin/bash -s "$LOOP_DEV" "$PART_DEV" << 'CHROOTEOF'
           set -euo pipefail
@@ -301,13 +102,15 @@ jobs:
           apt-get install -y -qq --no-install-recommends \
             grub-pc xorg openbox lxterminal pcmanfm tint2 mousepad netsurf-gtk \
             galculator viewnior htop feh procps \
-            python3 python3-tk espeak-ng lightdm sudo ca-certificates dbus-x11
+            python3 python3-tk espeak-ng lightdm sudo ca-certificates dbus-x11 locales x11-xkb-utils xarchiver lxappearance lxpolkit
 
           sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT="console=ttyS0,115200 console=tty0"/' /etc/default/grub
           sed -i 's/GRUB_TIMEOUT=.*/GRUB_TIMEOUT=1/' /etc/default/grub
 
           id -u perry-system >/dev/null 2>&1 || useradd -m -s /bin/bash -G sudo perry-system
-          passwd -d perry-system || true
+          TEMP_PASSWORD="$(od -An -N24 -tx1 /dev/urandom | tr -d '[:space:]')"
+          printf 'perry-system:%s\n' "$TEMP_PASSWORD" | chpasswd
+          unset TEMP_PASSWORD
           echo "perry-system ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/perry-system
           chmod 0440 /etc/sudoers.d/perry-system
 
@@ -330,7 +133,7 @@ jobs:
           Terminal=false
           DESKEOF
 
-          chmod +x /usr/local/bin/yonata-welcome.py /usr/local/bin/perry-explorer.py /home/perry-system/Desktop/Yonata.desktop
+          chmod +x /usr/local/bin/yonata-welcome.py /usr/local/bin/perry-explorer.py /usr/local/bin/perry-panel.py /home/perry-system/Desktop/Yonata.desktop
           chown -R perry-system:perry-system /home/perry-system
 
           grub-install --target=i386-pc --boot-directory=/boot "$LOOP_DEV"
@@ -371,7 +174,7 @@ jobs:
       - name: Instalar live-build y herramientas
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq live-build debian-archive-keyring squashfs-tools xorriso curl
+          sudo apt-get install -y -qq live-build debian-archive-keyring squashfs-tools xorriso curl isolinux syslinux-common
 
       - name: Compilar perry-pi-os-local-x64.iso
         run: |
@@ -403,135 +206,15 @@ jobs:
           echo 'APT_INDICES="false"' >> config/chroot
 
           cat << 'EOF' > config/package-lists/perry.list.chroot
-          linux-image-amd64 xorg openbox lxterminal pcmanfm tint2 mousepad chromium galculator viewnior htop feh procps python3 python3-tk espeak-ng lightdm sudo dbus-x11
+          linux-image-amd64 xorg openbox lxterminal pcmanfm tint2 mousepad chromium galculator viewnior htop feh procps python3 python3-tk espeak-ng lightdm sudo dbus-x11 locales x11-xkb-utils xarchiver lxappearance lxpolkit
           EOF
 
           cp ../wallpaper.png config/includes.chroot_after_packages/usr/share/backgrounds/perry-pi-os/wallpaper.png
 
-          cat << 'PYEOF' > config/includes.chroot_after_packages/usr/local/bin/yonata-welcome.py
-          import tkinter as tk
-          from tkinter import ttk, messagebox
-          import subprocess, threading, platform, os, shutil, re
+          cp ../build/yonata-welcome.py config/includes.chroot_after_packages/usr/local/bin/yonata-welcome.py
+          cp ../build/perry-explorer.py config/includes.chroot_after_packages/usr/local/bin/perry-explorer.py
+          cp ../build/perry-panel.py config/includes.chroot_after_packages/usr/local/bin/perry-panel.py
 
-          WALLPAPER = "/usr/share/backgrounds/perry-pi-os/wallpaper.png"
-
-          def hablar(t):
-              if shutil.which("espeak-ng"):
-                  threading.Thread(
-                      target=lambda: subprocess.run(["espeak-ng", "-v", "es", "-s", "145", t], check=False),
-                      daemon=True
-                  ).start()
-
-          class Yonata:
-              def __init__(self, r):
-                  self.r = r
-                  r.title("Yonata - Instalador Perry Pi OS")
-                  r.geometry("600x520")
-                  r.configure(bg="#0f172a")
-                  tk.Label(r, text="Hola, soy Yonata", font=("Sans", 19, "bold"), fg="#38bdf8", bg="#0f172a").pack(pady=(18, 4))
-                  tk.Label(r, text="Perry Pi OS • Sesión temporal: perry-system (sin contraseña)", font=("Sans", 9), fg="#94a3b8", bg="#0f172a").pack()
-
-                  form = tk.Frame(r, bg="#1e293b", padx=16, pady=12)
-                  form.pack(padx=30, pady=10, fill="x")
-
-                  tk.Label(form, text="Nuevo Usuario:", fg="#e2e8f0", bg="#1e293b", font=("Sans", 10, "bold")).grid(row=0, column=0, sticky="w", pady=4)
-                  self.user_entry = tk.Entry(form, width=28, font=("Sans", 10))
-                  self.user_entry.insert(0, "perry")
-                  self.user_entry.grid(row=0, column=1, padx=8, pady=4)
-
-                  tk.Label(form, text="Contraseña:", fg="#e2e8f0", bg="#1e293b", font=("Sans", 10, "bold")).grid(row=1, column=0, sticky="w", pady=4)
-                  self.pass_entry = tk.Entry(form, width=28, font=("Sans", 10), show="*")
-                  self.pass_entry.grid(row=1, column=1, padx=8, pady=4)
-
-                  self.login_visual_var = tk.BooleanVar(value=True)
-                  tk.Checkbutton(
-                      form, text="Activar pantalla de login visual tras crear usuario",
-                      variable=self.login_visual_var, bg="#1e293b", fg="#cbd5e1",
-                      selectcolor="#0f172a", activebackground="#1e293b"
-                  ).grid(row=2, column=0, columnspan=2, sticky="w", pady=(6, 0))
-
-                  self.desc = tk.Label(r, text="Instalación local lista (1 a 5 min según internet).", font=("Sans", 10), fg="#e2e8f0", bg="#0f172a")
-                  self.desc.pack(pady=8)
-                  self.pb = ttk.Progressbar(r, length=440, mode="determinate")
-                  self.pb.pack(pady=6)
-
-                  btn_frame = tk.Frame(r, bg="#0f172a")
-                  btn_frame.pack(pady=10)
-                  self.btn = tk.Button(btn_frame, text="Crear Usuario", bg="#10b981", fg="#fff", font=("Sans", 10, "bold"), relief="flat", padx=16, pady=8, command=self.start_install)
-                  self.btn.pack(side="left", padx=6)
-                  tk.Button(btn_frame, text="Abrir Terminal", bg="#334155", fg="#fff", font=("Sans", 10, "bold"), relief="flat", padx=14, pady=8, command=lambda: subprocess.Popen(["lxterminal"], start_new_session=True)).pack(side="left", padx=6)
-                  r.after(500, lambda: hablar("Hola, soy Yonata. Crea tu usuario para Perry Pi OS."))
-
-              def start_install(self):
-                  username = self.user_entry.get().strip()
-                  password = self.pass_entry.get()
-                  if not re.match(r"^[a-z_][a-z0-9_-]{0,31}$", username) or not password or username == "perry-system":
-                      messagebox.showerror("Datos inválidos", "Ingresa un usuario válido, una contraseña y evita el nombre reservado 'perry-system'.")
-                      return
-                  self.btn.config(state="disabled")
-                  self.pb["value"] = 40
-                  threading.Thread(target=self._worker, args=(username, password, self.login_visual_var.get()), daemon=True).start()
-
-              def _worker(self, username, password, visual_login):
-                  try:
-                      subprocess.run(["sudo", "useradd", "-m", "-s", "/bin/bash", "-G", "sudo", username], check=True)
-                      subprocess.run(["sudo", "chpasswd"], input=f"{username}:{password}\n".encode("utf-8"), check=True)
-                      new_home = f"/home/{username}"
-                      os.makedirs(f"{new_home}/.config/openbox", exist_ok=True)
-                      if os.path.exists(WALLPAPER):
-                          os.makedirs(f"{new_home}/.local/share/backgrounds", exist_ok=True)
-                          shutil.copy2(WALLPAPER, f"{new_home}/.local/share/backgrounds/wallpaper.png")
-                      with open(f"{new_home}/.config/openbox/autostart", "w", encoding="utf-8") as f:
-                          f.write("python3 /usr/local/bin/perry-explorer.py &\n")
-                      with open(os.path.join(new_home, ".perry_welcome_done"), "w", encoding="utf-8") as f:
-                          f.write("ok")
-                      subprocess.run(["sudo", "chown", "-R", f"{username}:{username}", new_home], check=True)
-                      conf = "[Seat:*]\nautologin-user=\nuser-session=openbox\n" if visual_login else f"[Seat:*]\nautologin-user={username}\nautologin-user-timeout=0\nuser-session=openbox\n"
-                      with open("/tmp/perry-lightdm.conf", "w", encoding="utf-8") as f:
-                          f.write(conf)
-                      subprocess.run(["sudo", "mv", "/tmp/perry-lightdm.conf", "/etc/lightdm/lightdm.conf.d/99-perry.conf"], check=True)
-                      self.r.after(0, lambda: (self.pb.config(value=100), self.desc.config(text=f"Usuario '{username}' creado."), self.btn.config(text="Cerrar", bg="#3b82f6", state="normal", command=self.r.destroy)))
-
-                  except Exception as error:
-                      message = str(error)
-                      self.r.after(0, lambda: messagebox.showerror("Error", message))
-                      self.r.after(0, lambda: self.btn.config(state="normal"))
-          if __name__ == "__main__":
-              root = tk.Tk()
-              Yonata(root)
-              root.mainloop()
-          PYEOF
-
-          cat << 'EXPEOF' > config/includes.chroot_after_packages/usr/local/bin/perry-explorer.py
-          import os, shutil, subprocess, time
-
-          WALLPAPER_PATHS = [
-              os.path.expanduser("~/.local/share/backgrounds/wallpaper.png"),
-              "/usr/share/backgrounds/perry-pi-os/wallpaper.png",
-          ]
-
-          def apply_wallpaper():
-              wp = next((p for p in WALLPAPER_PATHS if os.path.exists(p)), None)
-              if wp and shutil.which("feh"):
-                  subprocess.run(["feh", "--bg-fill", wp], check=False)
-
-          def is_running(proc_name):
-              return subprocess.run(["pgrep", "-x", proc_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
-
-          def main():
-              apply_wallpaper()
-              last_wp = time.time()
-              while True:
-                  if not is_running("tint2") and shutil.which("tint2"):
-                      subprocess.Popen(["tint2"], start_new_session=True)
-                  if time.time() - last_wp > 15:
-                      apply_wallpaper()
-                      last_wp = time.time()
-                  time.sleep(3)
-
-          if __name__ == "__main__":
-              main()
-          EXPEOF
 
           echo "perry-system ALL=(ALL) NOPASSWD:ALL" > config/includes.chroot_after_packages/etc/sudoers.d/perry-system
           chmod 0440 config/includes.chroot_after_packages/etc/sudoers.d/perry-system
@@ -555,6 +238,7 @@ jobs:
 
           chmod +x config/includes.chroot_after_packages/usr/local/bin/yonata-welcome.py \
                    config/includes.chroot_after_packages/usr/local/bin/perry-explorer.py \
+                   config/includes.chroot_after_packages/usr/local/bin/perry-panel.py \
                    config/includes.chroot_after_packages/home/perry-system/Desktop/Yonata.desktop
 
           sudo lb build
@@ -620,130 +304,10 @@ jobs:
           sudo mkdir -p mnt/usr/share/backgrounds/perry-pi-os mnt/usr/local/bin
           sudo cp wallpaper.png mnt/usr/share/backgrounds/perry-pi-os/wallpaper.png
 
-          cat << 'PYEOF' > mnt/usr/local/bin/yonata-welcome.py
-          import tkinter as tk
-          from tkinter import ttk, messagebox
-          import subprocess, threading, platform, os, shutil, re
+          sudo cp build/yonata-welcome.py mnt/usr/local/bin/yonata-welcome.py
+          sudo cp build/perry-explorer.py mnt/usr/local/bin/perry-explorer.py
+          sudo cp build/perry-panel.py mnt/usr/local/bin/perry-panel.py
 
-          WALLPAPER = "/usr/share/backgrounds/perry-pi-os/wallpaper.png"
-
-          def hablar(t):
-              if shutil.which("espeak-ng"):
-                  threading.Thread(
-                      target=lambda: subprocess.run(["espeak-ng", "-v", "es", "-s", "145", t], check=False),
-                      daemon=True
-                  ).start()
-
-          class Yonata:
-              def __init__(self, r):
-                  self.r = r
-                  r.title("Yonata - Instalador Perry Pi OS")
-                  r.geometry("600x520")
-                  r.configure(bg="#0f172a")
-                  tk.Label(r, text="Hola, soy Yonata", font=("Sans", 19, "bold"), fg="#38bdf8", bg="#0f172a").pack(pady=(18, 4))
-                  tk.Label(r, text="Perry Pi OS • Sesión temporal: perry-system (sin contraseña)", font=("Sans", 9), fg="#94a3b8", bg="#0f172a").pack()
-
-                  form = tk.Frame(r, bg="#1e293b", padx=16, pady=12)
-                  form.pack(padx=30, pady=10, fill="x")
-
-                  tk.Label(form, text="Nuevo Usuario:", fg="#e2e8f0", bg="#1e293b", font=("Sans", 10, "bold")).grid(row=0, column=0, sticky="w", pady=4)
-                  self.user_entry = tk.Entry(form, width=28, font=("Sans", 10))
-                  self.user_entry.insert(0, "perry")
-                  self.user_entry.grid(row=0, column=1, padx=8, pady=4)
-
-                  tk.Label(form, text="Contraseña:", fg="#e2e8f0", bg="#1e293b", font=("Sans", 10, "bold")).grid(row=1, column=0, sticky="w", pady=4)
-                  self.pass_entry = tk.Entry(form, width=28, font=("Sans", 10), show="*")
-                  self.pass_entry.grid(row=1, column=1, padx=8, pady=4)
-
-                  self.login_visual_var = tk.BooleanVar(value=True)
-                  tk.Checkbutton(
-                      form, text="Activar pantalla de login visual tras crear usuario",
-                      variable=self.login_visual_var, bg="#1e293b", fg="#cbd5e1",
-                      selectcolor="#0f172a", activebackground="#1e293b"
-                  ).grid(row=2, column=0, columnspan=2, sticky="w", pady=(6, 0))
-
-                  self.desc = tk.Label(r, text="Instalación local lista (1 a 5 min según internet).", font=("Sans", 10), fg="#e2e8f0", bg="#0f172a")
-                  self.desc.pack(pady=8)
-                  self.pb = ttk.Progressbar(r, length=440, mode="determinate")
-                  self.pb.pack(pady=6)
-
-                  btn_frame = tk.Frame(r, bg="#0f172a")
-                  btn_frame.pack(pady=10)
-                  self.btn = tk.Button(btn_frame, text="Crear Usuario", bg="#10b981", fg="#fff", font=("Sans", 10, "bold"), relief="flat", padx=16, pady=8, command=self.start_install)
-                  self.btn.pack(side="left", padx=6)
-                  tk.Button(btn_frame, text="Abrir Terminal", bg="#334155", fg="#fff", font=("Sans", 10, "bold"), relief="flat", padx=14, pady=8, command=lambda: subprocess.Popen(["lxterminal"], start_new_session=True)).pack(side="left", padx=6)
-                  r.after(500, lambda: hablar("Hola, soy Yonata. Crea tu usuario para Perry Pi OS."))
-
-              def start_install(self):
-                  username = self.user_entry.get().strip()
-                  password = self.pass_entry.get()
-                  if not re.match(r"^[a-z_][a-z0-9_-]{0,31}$", username) or not password or username == "perry-system":
-                      messagebox.showerror("Datos inválidos", "Ingresa un usuario válido, una contraseña y evita el nombre reservado 'perry-system'.")
-                      return
-                  self.btn.config(state="disabled")
-                  self.pb["value"] = 40
-                  threading.Thread(target=self._worker, args=(username, password, self.login_visual_var.get()), daemon=True).start()
-
-              def _worker(self, username, password, visual_login):
-                  try:
-                      subprocess.run(["sudo", "useradd", "-m", "-s", "/bin/bash", "-G", "sudo", username], check=True)
-                      subprocess.run(["sudo", "chpasswd"], input=f"{username}:{password}\n".encode("utf-8"), check=True)
-                      new_home = f"/home/{username}"
-                      os.makedirs(f"{new_home}/.config/openbox", exist_ok=True)
-                      if os.path.exists(WALLPAPER):
-                          os.makedirs(f"{new_home}/.local/share/backgrounds", exist_ok=True)
-                          shutil.copy2(WALLPAPER, f"{new_home}/.local/share/backgrounds/wallpaper.png")
-                      with open(f"{new_home}/.config/openbox/autostart", "w", encoding="utf-8") as f:
-                          f.write("python3 /usr/local/bin/perry-explorer.py &\n")
-                      with open(os.path.join(new_home, ".perry_welcome_done"), "w", encoding="utf-8") as f:
-                          f.write("ok")
-                      subprocess.run(["sudo", "chown", "-R", f"{username}:{username}", new_home], check=True)
-                      conf = "[Seat:*]\nautologin-user=\nuser-session=openbox\n" if visual_login else f"[Seat:*]\nautologin-user={username}\nautologin-user-timeout=0\nuser-session=openbox\n"
-                      with open("/tmp/perry-lightdm.conf", "w", encoding="utf-8") as f:
-                          f.write(conf)
-                      subprocess.run(["sudo", "mv", "/tmp/perry-lightdm.conf", "/etc/lightdm/lightdm.conf.d/99-perry.conf"], check=True)
-                      self.r.after(0, lambda: (self.pb.config(value=100), self.desc.config(text=f"Usuario '{username}' creado."), self.btn.config(text="Cerrar", bg="#3b82f6", state="normal", command=self.r.destroy)))
-
-                  except Exception as error:
-                      message = str(error)
-                      self.r.after(0, lambda: messagebox.showerror("Error", message))
-                      self.r.after(0, lambda: self.btn.config(state="normal"))
-          if __name__ == "__main__":
-              root = tk.Tk()
-              Yonata(root)
-              root.mainloop()
-          PYEOF
-
-          cat << 'EXPEOF' > mnt/usr/local/bin/perry-explorer.py
-          import os, shutil, subprocess, time
-
-          WALLPAPER_PATHS = [
-              os.path.expanduser("~/.local/share/backgrounds/wallpaper.png"),
-              "/usr/share/backgrounds/perry-pi-os/wallpaper.png",
-          ]
-
-          def apply_wallpaper():
-              wp = next((p for p in WALLPAPER_PATHS if os.path.exists(p)), None)
-              if wp and shutil.which("feh"):
-                  subprocess.run(["feh", "--bg-fill", wp], check=False)
-
-          def is_running(proc_name):
-              return subprocess.run(["pgrep", "-x", proc_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
-
-          def main():
-              apply_wallpaper()
-              last_wp = time.time()
-              while True:
-                  if not is_running("tint2") and shutil.which("tint2"):
-                      subprocess.Popen(["tint2"], start_new_session=True)
-                  if time.time() - last_wp > 15:
-                      apply_wallpaper()
-                      last_wp = time.time()
-                  time.sleep(3)
-
-          if __name__ == "__main__":
-              main()
-          EXPEOF
 
           sudo chroot mnt /bin/bash -s "$LOOP_DEV" "$PART_DEV" << 'CHROOTEOF'
           set -euo pipefail
@@ -760,13 +324,16 @@ jobs:
           apt-get install -y -qq --no-install-recommends \
             grub-pc xorg openbox lxterminal pcmanfm tint2 mousepad chromium \
             galculator viewnior htop feh procps \
-            python3 python3-tk espeak-ng lightdm sudo ca-certificates dbus-x11
+            python3 python3-tk espeak-ng lightdm sudo ca-certificates dbus-x11 \
+            locales x11-xkb-utils xarchiver lxappearance lxpolkit
 
           sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT="console=ttyS0,115200 console=tty0"/' /etc/default/grub
           sed -i 's/GRUB_TIMEOUT=.*/GRUB_TIMEOUT=1/' /etc/default/grub
 
           id -u perry-system >/dev/null 2>&1 || useradd -m -s /bin/bash -G sudo perry-system
-          passwd -d perry-system || true
+          TEMP_PASSWORD="$(od -An -N24 -tx1 /dev/urandom | tr -d '[:space:]')"
+          printf 'perry-system:%s\n' "$TEMP_PASSWORD" | chpasswd
+          unset TEMP_PASSWORD
           echo "perry-system ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/perry-system
           chmod 0440 /etc/sudoers.d/perry-system
 
@@ -789,7 +356,7 @@ jobs:
           Terminal=false
           DESKEOF
 
-          chmod +x /usr/local/bin/yonata-welcome.py /usr/local/bin/perry-explorer.py /home/perry-system/Desktop/Yonata.desktop
+          chmod +x /usr/local/bin/yonata-welcome.py /usr/local/bin/perry-explorer.py /usr/local/bin/perry-panel.py /home/perry-system/Desktop/Yonata.desktop
           chown -R perry-system:perry-system /home/perry-system
 
           grub-install --target=i386-pc --boot-directory=/boot "$LOOP_DEV"

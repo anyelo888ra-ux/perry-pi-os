@@ -1,7 +1,7 @@
 # Perry Pi OS
 [![Compilar Perry Pi OS (Web 32-bit, ISO 64-bit y Normal 64-bit)](https://github.com/anyelo888ra-ux/perry-pi-os/actions/workflows/build-os.yml/badge.svg)](https://github.com/anyelo888ra-ux/perry-pi-os/actions/workflows/build-os.yml)
 
-Sistema operativo ligero basado en **Debian 12 (Bookworm)** con entorno **Xorg + Openbox + tint2**, asistente de bienvenida/voz **Yonata** (`espeak-ng` + `tkinter`) y compilación automatizada mediante **GitHub Actions**.
+Sistema operativo ligero basado en **Debian 12 (Bookworm)** con entorno **Xorg + Openbox + Perry Panel**, asistente de bienvenida/voz **Yonata** (`espeak-ng` + `tkinter`) y compilación automatizada mediante **GitHub Actions**.
 
 ## Ediciones y compilaciones
 
@@ -9,14 +9,27 @@ Sistema operativo ligero basado en **Debian 12 (Bookworm)** con entorno **Xorg +
 * **Local ISO 64-bit (`perry-pi-os-local-x64.iso`):** Imagen híbrida booteable (`amd64` / `live-build`) con `chromium`, `mousepad`, `pcmanfm`, `lxterminal`, `galculator`, `viewnior`, `htop` y **Yonata**.
 * **Normal 64-bit (`perry-pi-os-normal-x64.img`):** Imagen de disco instalada (`amd64` / `linux-image-amd64`) con las mismas herramientas de escritorio, utilidades y asistente **Yonata**.
 
+## Escritorio y primer inicio
+
+Perry Pi OS usa un escritorio ligero basado en Openbox. Al primer inicio, Yonata muestra una introducción y un asistente de configuración con progreso por etapas. Permite seleccionar:
+
+- Español (Venezuela) o Español (España), además de inglés de Estados Unidos y Reino Unido.
+- Teclado latinoamericano, español o inglés estadounidense.
+- Zona horaria de Caracas, Madrid, Nueva York o UTC.
+- Usuario, contraseña y acceso automático opcional.
+
+Al terminar, Yonata configura el idioma, la zona horaria y la sesión, y revoca los permisos temporales del usuario de instalación.
+
+El panel inferior incluye un menú de inicio, búsqueda de aplicaciones, accesos fijados, indicador de perfil y reloj. El menú de sesión ofrece cerrar sesión, suspender, reiniciar y apagar.
+
+Aplicaciones incluidas según la edición: navegador (Chromium o NetSurf), PCManFM, LXTerminal, Mousepad, Galculator, Viewnior, htop, Xarchiver y LXAppearance.
+
 ## Primer inicio y cuentas
 
 * Las imágenes generadas por GitHub Actions inician en una sesión temporal de configuración llamada `perry-system`.
 * **Yonata** solicita crear el usuario personal y su contraseña durante el primer inicio.
 * No se publica una contraseña predeterminada para el usuario ni para `root`.
-* Tras configurar el usuario, la sesión gráfica queda preparada para usar Openbox y la barra `tint2`.
-
-**Aviso de seguridad pendiente:** la cuenta temporal `perry-system` se inicia automáticamente y conserva una regla `NOPASSWD` para el asistente. Esta revisión aún no revoca esa regla al finalizar Yonata. No distribuyas ni expongas estas imágenes en equipos conectados a redes no confiables hasta corregir ese punto.
+* Tras configurar el usuario, la sesión gráfica queda preparada para Openbox y Perry Panel.
 
 La configuración de instalación manual en `build/preseed.cfg` solicita las contraseñas durante el proceso; no contiene credenciales compartidas.
 
