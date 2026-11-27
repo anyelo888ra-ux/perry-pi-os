@@ -188,7 +188,8 @@ jobs:
 
                       self.r.after(0, self._done, username, visual_login)
                   except Exception as e:
-                      self.r.after(0, lambda: messagebox.showerror("Error", str(e)))
+                      message = str(e)
+                      self.r.after(0, lambda: messagebox.showerror("Error", message))
                       self.r.after(0, lambda: self.btn.config(state="normal"))
 
               def _done(self, username, visual_login):
