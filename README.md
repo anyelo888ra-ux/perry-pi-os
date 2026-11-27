@@ -1,4 +1,6 @@
 # Perry Pi OS
+
+![Perry Pi OS — Debian 12](wallpaper.png)
 [![Compilar Perry Pi OS (Web 32-bit, ISO 64-bit y Normal 64-bit)](https://github.com/anyelo888ra-ux/perry-pi-os/actions/workflows/build-os.yml/badge.svg)](https://github.com/anyelo888ra-ux/perry-pi-os/actions/workflows/build-os.yml)
 
 Sistema operativo ligero basado en **Debian 12 (Bookworm)** con entorno **Xorg + Openbox + Perry Panel**, asistente de bienvenida/voz **Yonata** (`espeak-ng` + `tkinter`) y compilación automatizada mediante **GitHub Actions**.
@@ -20,9 +22,20 @@ Perry Pi OS usa un escritorio ligero basado en Openbox. Al primer inicio, Yonata
 
 Al terminar, Yonata configura el idioma, la zona horaria y la sesión, y revoca los permisos temporales del usuario de instalación.
 
-El panel inferior incluye un menú de inicio, búsqueda de aplicaciones, accesos fijados, indicador de perfil y reloj. El menú de sesión ofrece cerrar sesión, suspender, reiniciar y apagar.
+El panel inferior incluye un menú de inicio, búsqueda de aplicaciones, accesos fijados, indicador de perfil y reloj. El menú de sesión ofrece cerrar sesión, suspender, reiniciar y apagar. El escritorio inicia limpio, sin accesos directos que tapen el fondo; las aplicaciones se abren desde el menú y el panel.
 
-Aplicaciones incluidas según la edición: navegador (Chromium o NetSurf), PCManFM, LXTerminal, Mousepad, Galculator, Viewnior, htop, Xarchiver y LXAppearance.
+Aplicaciones incluidas según la edición: navegador (Chromium o NetSurf), PCManFM, LXTerminal, Mousepad, Galculator, Viewnior, htop, Xarchiver y LXAppearance. El menú también incluye **Fondos de escritorio**, un selector que guarda la preferencia del usuario.
+
+## Fondos de escritorio
+
+Las variantes se mantienen como SVG editables en [wallpapers/](wallpapers/) y se convierten a PNG de 1920 × 1080 durante la compilación. Se instalan en `/usr/share/backgrounds/perry-pi-os/`:
+
+- `perry-original-v2.png`: fondo azul original de Perry Pi OS.
+- `perry-black.png`: edición negra con detalles neón.
+- `perry-elegant.png`: edición elegante con ondas azules y violetas.
+- `perry-developer.png`: edición especial para desarrolladores.
+
+El usuario puede cambiarlos desde **Perry → Fondos**. La selección se conserva al volver a iniciar sesión.
 
 ## Primer inicio y cuentas
 
