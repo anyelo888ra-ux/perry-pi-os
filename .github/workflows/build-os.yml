@@ -9,9 +9,16 @@ on:
       - "build/**"
       - ".github/workflows/build-os.yml"
       - "wallpaper.png"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "build/**"
+      - ".github/workflows/build-os.yml"
+      - "wallpaper.png"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build-web-32bit:
@@ -816,6 +823,9 @@ jobs:
   publish-release:
     name: 4. Publicar todo en GitHub Releases
     needs: [build-web-32bit, build-iso-64bit, build-normal-64bit]
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
       - name: Descargar artefactos disponibles
