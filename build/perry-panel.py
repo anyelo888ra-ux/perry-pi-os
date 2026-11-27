@@ -89,10 +89,44 @@ class PerryPanel:
                 self.button(area,"▸  "+label,lambda c=cmd: (launch(c),self.menu.destroy())).pack(fill="x",pady=2)
         render()
         search.bind("<KeyRelease>",lambda e:render(search.get()))
+        self.button(self.menu,"🖼  Fondos de pantalla",self.wallpaper_menu).pack(fill="x",padx=12,pady=(0,8))
         tk.Label(self.menu,text="SESIÓN",bg=PANEL,fg=MUTED,font=("Sans",8,"bold")).pack(anchor="w",padx=14,pady=(8,3))
         actions=tk.Frame(self.menu,bg=PANEL); actions.pack(fill="x",padx=10,pady=(0,10))
         for label,cmd in [("Cerrar sesión",["openbox","--exit"]),("Suspender",["systemctl","suspend"]),("Reiniciar",["systemctl","reboot"]),("Apagar",["systemctl","poweroff"])]:
             self.button(actions,label,lambda c=cmd:self.session(c)).pack(side="left",expand=True,fill="x",padx=2)
+
+    def wallpaper_menu(self):
+        folder="/usr/share/backgrounds/perry-pi-os"
+        try:
+            choices=sorted(name for name in os.listdir(folder)
+                           if name.lower().endswith((".png",".jpg",".jpeg",".webp")))
+        except OSError:
+            choices=[]
+        if not choices:
+            messagebox.showinfo("Perry Pi OS","Todavía no hay fondos adicionales instalados.")
+            return
+        win=tk.Toplevel(self.root)
+        win.title("Fondos de pantalla")
+        win.configure(bg=PANEL)
+        win.geometry("320x300")
+        tk.Label(win,text="Elige tu fondo",bg=PANEL,fg=FG,
+                 font=("Sans",12,"bold")).pack(anchor="w",padx=14,pady=12)
+        for name in choices:
+            path=os.path.join(folder,name)
+            self.button(win,name,lambda p=path:self.set_wallpaper(p)).pack(fill="x",padx=12,pady=3)
+
+    def set_wallpaper(self,path):
+        if not shutil.which("feh"):
+            messagebox.showinfo("Perry Pi OS","No se encontró feh para aplicar el fondo.")
+            return
+        config=os.path.expanduser("~/.config/perry")
+        os.makedirs(config,exist_ok=True)
+        try:
+            with open(os.path.join(config,"wallpaper"),"w",encoding="utf-8") as f:
+                f.write(path+"\n")
+            subprocess.Popen(["feh","--bg-fill",path],start_new_session=True)
+        except OSError as exc:
+            messagebox.showerror("Perry Pi OS",str(exc))
 
     def session(self,cmd):
         try: subprocess.Popen(cmd,start_new_session=True)
