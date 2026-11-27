@@ -193,7 +193,8 @@ jobs:
             iso-build/config/includes.chroot_after_packages/etc/lightdm/lightdm.conf.d \
             iso-build/config/includes.chroot_after_packages/etc/sudoers.d \
             iso-build/config/includes.chroot_after_packages/home/perry-system/.config/openbox \
-            iso-build/config/includes.chroot_after_packages/home/perry-system/Desktop
+            iso-build/config/includes.chroot_after_packages/home/perry-system/Desktop \
+            iso-build/config/includes.chroot_after_packages/root/isolinux
           cd iso-build
 
           sudo lb config --mode debian --architecture amd64 --distribution bookworm \
@@ -245,9 +246,9 @@ jobs:
                    config/includes.chroot_after_packages/usr/local/bin/perry-panel.py \
                    config/includes.chroot_after_packages/home/perry-system/Desktop/Yonata.desktop
 
-          # Ubuntu's live-build looks for BIOS Syslinux files in /root/isolinux.
-          # The packages install them under /usr/lib, so stage the exact files
-          # before running live-build as root.
+          # live-build ejecuta la fase Syslinux dentro del chroot.
+          # Por eso estos archivos deben entrar en el sistema objetivo,
+          # no en /root del runner de GitHub Actions.
           ISOLINUX_BIN="$(dpkg -L isolinux | awk '/\/isolinux\.bin$/ { print; exit }')"
           VESAMENU_BIN="$(dpkg -L syslinux-common | awk '/\/vesamenu\.c32$/ { print; exit }')"
 
@@ -269,10 +270,9 @@ jobs:
             exit 1
           fi
 
-          sudo install -d -m 0755 /root/isolinux
-          sudo install -m 0644 "$ISOLINUX_BIN" /root/isolinux/isolinux.bin
-          sudo install -m 0644 "$VESAMENU_BIN" /root/isolinux/vesamenu.c32
-          sudo ls -l /root/isolinux/
+          install -m 0644 "$ISOLINUX_BIN" config/includes.chroot_after_packages/root/isolinux/isolinux.bin
+          install -m 0644 "$VESAMENU_BIN" config/includes.chroot_after_packages/root/isolinux/vesamenu.c32
+          ls -l config/includes.chroot_after_packages/root/isolinux/
 
           sudo lb build
           mv live-image-amd64.hybrid.iso ../perry-pi-os-local-x64.iso
