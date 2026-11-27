@@ -497,6 +497,8 @@
         startEmulatorWithBuffer(savedRawBuffer, lastDiskLabel);
       } else if (window.emulator && typeof window.emulator.restart === "function") {
         window.emulator.restart();
+        isPaused = false;
+        updatePauseButton();
       } else {
         retryCloudLoad();
       }
