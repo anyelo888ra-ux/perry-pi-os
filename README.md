@@ -9,6 +9,21 @@ Sistema operativo ligero basado en **Debian 12 (Bookworm)** con entorno **Xorg +
 * **Local ISO 64-bit (`perry-pi-os-local-x64.iso`):** Imagen híbrida booteable (`amd64` / `live-build`) con `chromium`, `mousepad`, `pcmanfm`, `lxterminal`, `galculator`, `viewnior`, `htop` y **Yonata**.
 * **Normal 64-bit (`perry-pi-os-normal-x64.img`):** Imagen de disco instalada (`amd64` / `linux-image-amd64`) con las mismas herramientas de escritorio, utilidades y asistente **Yonata**.
 
+## Escritorio y primer inicio
+
+Perry Pi OS usa un escritorio ligero basado en Openbox. Al primer inicio, Yonata muestra una introducción y un asistente de configuración con progreso por etapas. Permite seleccionar:
+
+- Español (Venezuela) o Español (España), además de inglés de Estados Unidos y Reino Unido.
+- Teclado latinoamericano, español o inglés estadounidense.
+- Zona horaria de Caracas, Madrid, Nueva York o UTC.
+- Usuario, contraseña y acceso automático opcional.
+
+Al terminar, Yonata configura el idioma, la zona horaria y la sesión, y revoca los permisos temporales del usuario de instalación.
+
+El panel inferior incluye un menú de inicio, búsqueda de aplicaciones, accesos fijados, indicador de perfil y reloj. El menú de sesión ofrece cerrar sesión, suspender, reiniciar y apagar.
+
+Aplicaciones incluidas según la edición: navegador (Chromium o NetSurf), PCManFM, LXTerminal, Mousepad, Galculator, Viewnior, htop, Xarchiver y LXAppearance.
+
 ## Primer inicio y cuentas
 
 * Las imágenes generadas por GitHub Actions inician en una sesión temporal de configuración llamada `perry-system`.
