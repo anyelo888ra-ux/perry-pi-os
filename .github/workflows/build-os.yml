@@ -238,6 +238,7 @@ jobs:
 
           chmod +x config/includes.chroot_after_packages/usr/local/bin/yonata-welcome.py \
                    config/includes.chroot_after_packages/usr/local/bin/perry-explorer.py \
+                   config/includes.chroot_after_packages/usr/local/bin/perry-panel.py \
                    config/includes.chroot_after_packages/home/perry-system/Desktop/Yonata.desktop
 
           sudo lb build
