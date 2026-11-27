@@ -165,6 +165,8 @@ jobs:
                       with open(f"{new_home}/.config/openbox/autostart", "w", encoding="utf-8") as f:
                           f.write(autostart_content)
 
+                      with open(os.path.join(new_home, ".perry_welcome_done"), "w", encoding="utf-8") as f:
+                          f.write("ok")
                       subprocess.run(["sudo", "chown", "-R", f"{username}:{username}", new_home], check=True)
 
                       # Configurar LightDM: login visual o autologin al nuevo usuario
@@ -176,9 +178,6 @@ jobs:
                       with open("/tmp/perry-lightdm.conf", "w", encoding="utf-8") as f:
                           f.write(lightdm_conf)
                       subprocess.run(["sudo", "mv", "/tmp/perry-lightdm.conf", "/etc/lightdm/lightdm.conf.d/99-perry.conf"], check=True)
-
-                      with open(os.path.join(new_home, ".perry_welcome_done"), "w", encoding="utf-8") as f:
-                          f.write("ok")
 
                       self.r.after(0, self._done, username, visual_login)
                   except Exception as e:
@@ -303,7 +302,6 @@ jobs:
           passwd -d perry-system || true
           echo "perry-system ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/perry-system
           chmod 0440 /etc/sudoers.d/perry-system
-          echo "root:perry" | chpasswd
 
           mkdir -p /etc/lightdm/lightdm.conf.d /home/perry-system/.config/openbox /home/perry-system/Desktop
           printf '[Seat:*]\nautologin-user=perry-system\nautologin-user-timeout=0\nuser-session=openbox\n' > /etc/lightdm/lightdm.conf.d/99-perry.conf
@@ -477,13 +475,13 @@ jobs:
                           shutil.copy2(WALLPAPER, f"{new_home}/.local/share/backgrounds/wallpaper.png")
                       with open(f"{new_home}/.config/openbox/autostart", "w", encoding="utf-8") as f:
                           f.write("python3 /usr/local/bin/perry-explorer.py &\n")
+                      with open(os.path.join(new_home, ".perry_welcome_done"), "w", encoding="utf-8") as f:
+                          f.write("ok")
                       subprocess.run(["sudo", "chown", "-R", f"{username}:{username}", new_home], check=True)
                       conf = "[Seat:*]\nautologin-user=\nuser-session=openbox\n" if visual_login else f"[Seat:*]\nautologin-user={username}\nautologin-user-timeout=0\nuser-session=openbox\n"
                       with open("/tmp/perry-lightdm.conf", "w", encoding="utf-8") as f:
                           f.write(conf)
                       subprocess.run(["sudo", "mv", "/tmp/perry-lightdm.conf", "/etc/lightdm/lightdm.conf.d/99-perry.conf"], check=True)
-                      with open(os.path.join(new_home, ".perry_welcome_done"), "w", encoding="utf-8") as f:
-                          f.write("ok")
                       self.r.after(0, lambda: (self.pb.config(value=100), self.desc.config(text=f"Usuario '{username}' creado."), self.btn.config(text="Cerrar", bg="#3b82f6", state="normal", command=self.r.destroy)))
 
                   except Exception as error:
@@ -689,13 +687,13 @@ jobs:
                           shutil.copy2(WALLPAPER, f"{new_home}/.local/share/backgrounds/wallpaper.png")
                       with open(f"{new_home}/.config/openbox/autostart", "w", encoding="utf-8") as f:
                           f.write("python3 /usr/local/bin/perry-explorer.py &\n")
+                      with open(os.path.join(new_home, ".perry_welcome_done"), "w", encoding="utf-8") as f:
+                          f.write("ok")
                       subprocess.run(["sudo", "chown", "-R", f"{username}:{username}", new_home], check=True)
                       conf = "[Seat:*]\nautologin-user=\nuser-session=openbox\n" if visual_login else f"[Seat:*]\nautologin-user={username}\nautologin-user-timeout=0\nuser-session=openbox\n"
                       with open("/tmp/perry-lightdm.conf", "w", encoding="utf-8") as f:
                           f.write(conf)
                       subprocess.run(["sudo", "mv", "/tmp/perry-lightdm.conf", "/etc/lightdm/lightdm.conf.d/99-perry.conf"], check=True)
-                      with open(os.path.join(new_home, ".perry_welcome_done"), "w", encoding="utf-8") as f:
-                          f.write("ok")
                       self.r.after(0, lambda: (self.pb.config(value=100), self.desc.config(text=f"Usuario '{username}' creado."), self.btn.config(text="Cerrar", bg="#3b82f6", state="normal", command=self.r.destroy)))
 
                   except Exception as error:
@@ -763,7 +761,6 @@ jobs:
           passwd -d perry-system || true
           echo "perry-system ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/perry-system
           chmod 0440 /etc/sudoers.d/perry-system
-          echo "root:perry" | chpasswd
 
           mkdir -p /etc/lightdm/lightdm.conf.d /home/perry-system/.config/openbox /home/perry-system/Desktop
           printf '[Seat:*]\nautologin-user=perry-system\nautologin-user-timeout=0\nuser-session=openbox\n' > /etc/lightdm/lightdm.conf.d/99-perry.conf
