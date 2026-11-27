@@ -30,7 +30,7 @@ jobs:
       - name: Instalar herramientas
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq debootstrap debian-archive-keyring grub-pc-bin parted dosfstools e2fsprogs curl
+          sudo apt-get install -y -qq debootstrap debian-archive-keyring grub-pc-bin parted dosfstools e2fsprogs curl librsvg2-bin
 
       - name: Preparar wallpaper y scripts base
         run: |
@@ -39,7 +39,13 @@ jobs:
             curl -fsSL "https://raw.githubusercontent.com/anyelo888ra-ux/perry-pi-os/main/wallpaper.png" -o wallpaper.png
           fi
 
-          python3 -m py_compile build/yonata-welcome.py build/perry-explorer.py build/perry-panel.py
+          mkdir -p wallpapers
+          cp wallpaper.png wallpapers/perry-original-v2.png
+          for svg in wallpapers/*.svg; do
+            name="$(basename "$svg" .svg)"
+            rsvg-convert -w 1920 -h 1080 "$svg" > "wallpapers/$name.png"
+          done
+          python3 -m py_compile build/yonata-welcome.py build/perry-explorer.py build/perry-panel.py build/perry-wallpaper.py
           cp build/yonata-welcome.py yonata.py
           cp build/perry-explorer.py perry-explorer.py
           cp build/perry-panel.py perry-panel.py
@@ -50,6 +56,13 @@ jobs:
           set -euo pipefail
           IMG="perry-pi-os-web.img"
           LOOP_DEV=""
+
+          mkdir -p wallpapers
+          cp wallpaper.png wallpapers/perry-original-v2.png
+          for svg in wallpapers/*.svg; do
+            name="$(basename "$svg" .svg)"
+            rsvg-convert -w 1920 -h 1080 "$svg" > "wallpapers/$name.png"
+          done
 
           cleanup() {
             set +e
@@ -82,10 +95,12 @@ jobs:
           done
 
           sudo mkdir -p mnt/usr/share/backgrounds/perry-pi-os mnt/usr/local/bin
-          sudo cp wallpaper.png mnt/usr/share/backgrounds/perry-pi-os/wallpaper.png
+          sudo cp wallpapers/*.png mnt/usr/share/backgrounds/perry-pi-os/
+          sudo cp wallpapers/perry-original-v2.png mnt/usr/share/backgrounds/perry-pi-os/wallpaper.png
           sudo cp yonata.py mnt/usr/local/bin/yonata-welcome.py
           sudo cp perry-explorer.py mnt/usr/local/bin/perry-explorer.py
           sudo cp perry-panel.py mnt/usr/local/bin/perry-panel.py
+          sudo cp build/perry-wallpaper.py mnt/usr/local/bin/perry-wallpaper.py
 
           sudo chroot mnt /bin/bash -s "$LOOP_DEV" "$PART_DEV" << 'CHROOTEOF'
           set -euo pipefail
@@ -133,7 +148,7 @@ jobs:
           Terminal=false
           DESKEOF
 
-          chmod +x /usr/local/bin/yonata-welcome.py /usr/local/bin/perry-explorer.py /usr/local/bin/perry-panel.py /home/perry-system/Desktop/Yonata.desktop
+          chmod +x /usr/local/bin/yonata-welcome.py /usr/local/bin/perry-explorer.py /usr/local/bin/perry-panel.py /usr/local/bin/perry-wallpaper.py /home/perry-system/Desktop/Yonata.desktop
           chown -R perry-system:perry-system /home/perry-system
 
           grub-install --target=i386-pc --boot-directory=/boot "$LOOP_DEV"
@@ -174,7 +189,7 @@ jobs:
       - name: Instalar live-build y herramientas
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq live-build debian-archive-keyring squashfs-tools xorriso curl isolinux syslinux-common
+          sudo apt-get install -y -qq live-build debian-archive-keyring squashfs-tools xorriso curl isolinux syslinux-common librsvg2-bin
 
       - name: Compilar perry-pi-os-local-x64.iso
         run: |
@@ -209,11 +224,19 @@ jobs:
           linux-image-amd64 xorg openbox lxterminal pcmanfm tint2 mousepad chromium galculator viewnior htop feh procps python3 python3-tk espeak-ng lightdm sudo dbus-x11 locales x11-xkb-utils xarchiver lxappearance lxpolkit
           EOF
 
-          cp ../wallpaper.png config/includes.chroot_after_packages/usr/share/backgrounds/perry-pi-os/wallpaper.png
+          mkdir -p ../wallpapers
+          cp ../wallpaper.png ../wallpapers/perry-original-v2.png
+          for svg in ../wallpapers/*.svg; do
+            name="$(basename "$svg" .svg)"
+            rsvg-convert -w 1920 -h 1080 "$svg" > "../wallpapers/$name.png"
+          done
+          cp ../wallpapers/*.png config/includes.chroot_after_packages/usr/share/backgrounds/perry-pi-os/
+          cp ../wallpapers/perry-original-v2.png config/includes.chroot_after_packages/usr/share/backgrounds/perry-pi-os/wallpaper.png
 
           cp ../build/yonata-welcome.py config/includes.chroot_after_packages/usr/local/bin/yonata-welcome.py
           cp ../build/perry-explorer.py config/includes.chroot_after_packages/usr/local/bin/perry-explorer.py
           cp ../build/perry-panel.py config/includes.chroot_after_packages/usr/local/bin/perry-panel.py
+          cp ../build/perry-wallpaper.py config/includes.chroot_after_packages/usr/local/bin/perry-wallpaper.py
 
 
           echo "perry-system ALL=(ALL) NOPASSWD:ALL" > config/includes.chroot_after_packages/etc/sudoers.d/perry-system
@@ -239,8 +262,18 @@ jobs:
           chmod +x config/includes.chroot_after_packages/usr/local/bin/yonata-welcome.py \
                    config/includes.chroot_after_packages/usr/local/bin/perry-explorer.py \
                    config/includes.chroot_after_packages/usr/local/bin/perry-panel.py \
+                   config/includes.chroot_after_packages/usr/local/bin/perry-wallpaper.py \
                    config/includes.chroot_after_packages/home/perry-system/Desktop/Yonata.desktop
 
+          # live-build busca estos ficheros en /root/isolinux, pero Debian los instala
+          # bajo /usr/lib. Los colocamos explícitamente antes de generar la ISO.
+          sudo mkdir -p /root/isolinux
+          ISOLINUX_BIN="$(find /usr/lib -type f -name isolinux.bin -print -quit)"
+          VESAMENU_C32="$(find /usr/lib -type f -name vesamenu.c32 -print -quit)"
+          test -n "$ISOLINUX_BIN" || { echo "No se encontró isolinux.bin"; exit 1; }
+          test -n "$VESAMENU_C32" || { echo "No se encontró vesamenu.c32"; exit 1; }
+          sudo cp "$ISOLINUX_BIN" /root/isolinux/isolinux.bin
+          sudo cp "$VESAMENU_C32" /root/isolinux/vesamenu.c32
           sudo lb build
           mv live-image-amd64.hybrid.iso ../perry-pi-os-local-x64.iso
 
@@ -307,6 +340,7 @@ jobs:
           sudo cp build/yonata-welcome.py mnt/usr/local/bin/yonata-welcome.py
           sudo cp build/perry-explorer.py mnt/usr/local/bin/perry-explorer.py
           sudo cp build/perry-panel.py mnt/usr/local/bin/perry-panel.py
+          sudo cp build/perry-wallpaper.py mnt/usr/local/bin/perry-wallpaper.py
 
 
           sudo chroot mnt /bin/bash -s "$LOOP_DEV" "$PART_DEV" << 'CHROOTEOF'
