@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://anyelo888ra-ux.github.io/perry-pi-os/sitemap.xml
