@@ -1,10 +1,9 @@
-Perry Pi OS — Wallpapers
-========================
+# Fondos de Perry Pi OS
 
-Three separate desktop backgrounds, each 1920x1080 (16:9):
-- perry-original-v2.png: blue cyberpunk city and circuit identity.
-- perry-black.png: black geometric design with cyan and violet neon.
-- perry-elegant.png: elegant dark blue/purple flowing-wave design.
+Añade aquí los wallpapers PNG adicionales del proyecto.
 
-Suggested installation directory:
-/usr/share/backgrounds/
+Durante la compilación, GitHub Actions copiará automáticamente todos los archivos `*.png` de esta carpeta a:
+
+`/usr/share/backgrounds/perry-pi-os/`
+
+El fondo predeterminado continúa siendo `wallpaper.png` en la raíz del repositorio. Los fondos adicionales estarán disponibles desde **Perry → Fondos de pantalla** y la selección se conservará entre sesiones.
