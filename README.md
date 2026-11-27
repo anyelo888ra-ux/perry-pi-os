@@ -1,4 +1,5 @@
 # Perry Pi OS
+[![Compilar Perry Pi OS (Web 32-bit, ISO 64-bit y Normal 64-bit)](https://github.com/anyelo888ra-ux/perry-pi-os/actions/workflows/build-os.yml/badge.svg)](https://github.com/anyelo888ra-ux/perry-pi-os/actions/workflows/build-os.yml)
 
 Sistema operativo ligero basado en **Debian 12 (Bookworm)** con entorno **Xorg + Openbox + tint2**, asistente de bienvenida/voz **Yonata** (`espeak-ng` + `tkinter`) y compilación automatizada mediante **GitHub Actions**.
 
