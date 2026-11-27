@@ -122,8 +122,13 @@ class Yonata:
             self.progress(28,"Preparando carpetas y escritorio")
             os.makedirs(f"{home}/.config/openbox",exist_ok=True)
             os.makedirs(f"{home}/.local/share/backgrounds",exist_ok=True)
-            wallpaper="/usr/share/backgrounds/perry-pi-os/wallpaper.png"
-            if os.path.exists(wallpaper): shutil.copy2(wallpaper,f"{home}/.local/share/backgrounds/wallpaper.png")
+            os.makedirs(f"{home}/.config/perry-pi-os",exist_ok=True)
+            wallpaper="/usr/share/backgrounds/perry-pi-os/perry-original-v2.png"
+            if os.path.exists(wallpaper) and not os.path.exists(f"{home}/.config/perry-pi-os/wallpaper"):
+                with open(f"{home}/.config/perry-pi-os/wallpaper","w",encoding="utf-8") as pref:
+                    pref.write("perry-original-v2.png\n")
+            if os.path.exists(wallpaper):
+                shutil.copy2(wallpaper,f"{home}/.local/share/backgrounds/wallpaper.png")
             with open(f"{home}/.config/openbox/autostart","w") as f:
                 f.write("python3 /usr/local/bin/perry-explorer.py &\n")
             with open(f"{home}/.xsessionrc","w") as f:
