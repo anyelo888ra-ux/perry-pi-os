@@ -33,11 +33,31 @@ jobs:
           set -euo pipefail
           test -f web/index.html
           test -f web/demo.html
+          test -f web/downloads.html
+          test -f web/guide.html
+          test -f web/404.html
+          test -f web/favicon.svg
+          test -f web/site.webmanifest
+          test -f web/robots.txt
+          test -f web/sitemap.xml
+          test -f web/search-index.json
           test -f web/libv86.js
           test -f web/v86.wasm
           test -f web/seabios.bin
           test -f web/vgabios.bin
+          python3 -m json.tool web/site.webmanifest >/dev/null
+          python3 -m json.tool web/search-index.json >/dev/null
           python3 -m py_compile web/app.py
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          sitemap = ET.parse("web/sitemap.xml").getroot()
+          assert sitemap.tag.endswith("urlset"), "Sitemap XML root must be urlset"
+          index = Path("web/index.html").read_text(encoding="utf-8")
+          for token in ('rel="canonical"', 'property="og:image"', 'name="twitter:card"', 'application/ld+json'):
+              assert token in index, f"Missing SEO/social metadata: {token}"
+          print("SEO, social metadata, manifest, sitemap and search index validated.")
+          PY
           python3 - <<'PY'
           from pathlib import Path
           import re
