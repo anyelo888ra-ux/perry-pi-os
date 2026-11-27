@@ -5,10 +5,10 @@ def apply_wallpaper():
     wp=next((p for p in WALLPAPER_PATHS if os.path.exists(p)),None)
     if wp and shutil.which("feh"): subprocess.run(["feh","--bg-fill",wp],check=False)
 def running(name):
-    return subprocess.run(["pgrep","-x",name],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode==0
+    return subprocess.run(["pgrep","-f",f"/usr/local/bin/{name}"],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode==0
 def main():
     apply_wallpaper()
-    if shutil.which("perry-panel.py") and not running("perry-panel.py"):
+    if not running("perry-panel.py"):
         subprocess.Popen(["python3","/usr/local/bin/perry-panel.py"],start_new_session=True)
     if shutil.which("tint2"):
         subprocess.run(["pkill","-x","tint2"],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
