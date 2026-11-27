@@ -107,8 +107,8 @@ jobs:
           sed -i 's/GRUB_TIMEOUT=.*/GRUB_TIMEOUT=1/' /etc/default/grub
 
           id -u perry-system >/dev/null 2>&1 || useradd -m -s /bin/bash -G sudo perry-system
-          TEMP_PASSWORD="$(od -An -N24 -tx1 /dev/urandom | tr -d ' \\n')"
-          printf 'perry-system:%s\\n' "$TEMP_PASSWORD" | chpasswd
+          TEMP_PASSWORD="$(od -An -N24 -tx1 /dev/urandom | tr -d '[:space:]')"
+          printf 'perry-system:%s\n' "$TEMP_PASSWORD" | chpasswd
           unset TEMP_PASSWORD
           echo "perry-system ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/perry-system
           chmod 0440 /etc/sudoers.d/perry-system
@@ -353,7 +353,7 @@ jobs:
           Terminal=false
           DESKEOF
 
-          chmod +x /usr/local/bin/yonata-welcome.py /usr/local/bin/perry-explorer.py /home/perry-system/Desktop/Yonata.desktop
+          chmod +x /usr/local/bin/yonata-welcome.py /usr/local/bin/perry-explorer.py /usr/local/bin/perry-panel.py /home/perry-system/Desktop/Yonata.desktop
           chown -R perry-system:perry-system /home/perry-system
 
           grub-install --target=i386-pc --boot-directory=/boot "$LOOP_DEV"
