@@ -8,6 +8,8 @@ def running(name):
     return subprocess.run(["pgrep","-f",f"/usr/local/bin/{name}"],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode==0
 def main():
     apply_wallpaper()
+    if shutil.which("lxpolkit") and subprocess.run(["pgrep","-x","lxpolkit"],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode!=0:
+        subprocess.Popen(["lxpolkit"],start_new_session=True)
     if not running("perry-panel.py"):
         subprocess.Popen(["python3","/usr/local/bin/perry-panel.py"],start_new_session=True)
     if shutil.which("tint2"):
