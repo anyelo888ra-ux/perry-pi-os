@@ -9,6 +9,7 @@ on:
       - "build/**"
       - ".github/workflows/build-os.yml"
       - "wallpaper.png"
+      - "wallpapers/**"
   pull_request:
     branches:
       - main
@@ -83,6 +84,7 @@ jobs:
 
           sudo mkdir -p mnt/usr/share/backgrounds/perry-pi-os mnt/usr/local/bin
           sudo cp wallpaper.png mnt/usr/share/backgrounds/perry-pi-os/wallpaper.png
+          if compgen -G "wallpapers/*.png" > /dev/null; then sudo cp wallpapers/*.png mnt/usr/share/backgrounds/perry-pi-os/; fi
           sudo cp yonata.py mnt/usr/local/bin/yonata-welcome.py
           sudo cp perry-explorer.py mnt/usr/local/bin/perry-explorer.py
           sudo cp perry-panel.py mnt/usr/local/bin/perry-panel.py
@@ -210,6 +212,7 @@ jobs:
           EOF
 
           cp ../wallpaper.png config/includes.chroot_after_packages/usr/share/backgrounds/perry-pi-os/wallpaper.png
+          if compgen -G "../wallpapers/*.png" > /dev/null; then cp ../wallpapers/*.png config/includes.chroot_after_packages/usr/share/backgrounds/perry-pi-os/; fi
 
           cp ../build/yonata-welcome.py config/includes.chroot_after_packages/usr/local/bin/yonata-welcome.py
           cp ../build/perry-explorer.py config/includes.chroot_after_packages/usr/local/bin/perry-explorer.py
