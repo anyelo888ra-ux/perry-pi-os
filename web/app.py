@@ -47,7 +47,7 @@ class RangeHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
         if range_header:
             # This server supports one byte range per request.
-            match = re.fullmatch(r"bytes=(\\d*)-(\\d*)", range_header.strip())
+            match = re.fullmatch(r"bytes=(\d*)-(\d*)", range_header.strip())
             if not match or "," in range_header:
                 return self._range_not_satisfiable(file_size)
 
