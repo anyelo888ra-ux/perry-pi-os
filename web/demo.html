@@ -250,7 +250,7 @@
   <header>
     <div class="info">
       <strong>🍓 Perry Pi OS</strong>
-      <span id="emu-status" class="status-badge">● Iniciando motor...</span>
+      <span id="emu-status" class="status-badge" role="status" aria-live="polite">● Iniciando motor...</span>
       <span>Configuración inicial: <code>Yonata</code></span>
     </div>
     <div class="actions">
@@ -263,6 +263,7 @@
       <label class="btn-file" for="file-input">📂 Cargar .img / .img.gz</label>
       <input id="file-input" type="file" accept=".img,.gz" onchange="handleLocalFile(event)">
       <button type="button" class="btn-secondary" onclick="retryCloudLoad()">Reintentar Nube</button>
+      <button type="button" class="btn-secondary" id="pause-button" onclick="togglePause()" disabled>Pausar</button>
       <button type="button" class="btn-secondary" onclick="restartEmulator()">Reiniciar</button>
       <button type="button" onclick="toggleFullscreen()">Pantalla Completa</button>
     </div>
@@ -300,7 +301,8 @@
   </div>
 
   <div class="hint-bar">
-    <span>Clic en la pantalla para enfocar teclado • Arrastra una imagen de disco .img o .img.gz aquí.</span>
+    <span>Clic en la pantalla para enfocar teclado • Arrastra una imagen .img o .img.gz aquí.</span>
+    <span>Atajos: Ctrl + Alt + P pausa/reanuda · Ctrl + Alt + R reinicia</span>
     <span id="disk-label">Disco: <code>perry-pi-os-web.img.gz</code> / <code>perry-pi-os-web.img</code></span>
   </div>
 
@@ -322,6 +324,31 @@
     let savedRawBuffer = null;
     let lastDiskLabel = "";
     let bootTimeoutId = null;
+    let isPaused = false;
+
+    function updatePauseButton() {
+      const button = document.getElementById("pause-button");
+      if (!button) return;
+      button.disabled = !window.emulator || typeof window.emulator.stop !== "function" || typeof window.emulator.run !== "function";
+      button.textContent = isPaused ? "Continuar" : "Pausar";
+    }
+
+    function togglePause() {
+      if (!window.emulator || typeof window.emulator.stop !== "function" || typeof window.emulator.run !== "function") {
+        setStatus("La máquina todavía no está lista", "busy");
+        return;
+      }
+      if (isPaused) {
+        window.emulator.run();
+        isPaused = false;
+        setStatus("Ejecutando (" + currentRamMb + " MB)", "ok");
+      } else {
+        window.emulator.stop();
+        isPaused = true;
+        setStatus("Pausado", "busy");
+      }
+      updatePauseButton();
+    }
 
     function setStatus(text, type = "ok") {
       const el = document.getElementById("emu-status");
@@ -410,6 +437,8 @@
       // Conserva una sola copia del disco: las imágenes pueden ocupar varios GB.
       savedRawBuffer = rawBuffer;
       if (labelText) setDiskLabel(labelText);
+      isPaused = false;
+      updatePauseButton();
 
       if (bootTimeoutId) {
         clearTimeout(bootTimeoutId);
@@ -448,6 +477,7 @@
 
       window.emulator.add_listener("emulator-ready", function() {
         setStatus("Emulador listo", "ok");
+        updatePauseButton();
       });
 
       window.emulator.add_listener("emulator-started", function() {
@@ -457,6 +487,8 @@
         }
         setProgress(false);
         setStatus("Ejecutando (" + currentRamMb + " MB)", "ok");
+        isPaused = false;
+        updatePauseButton();
       });
     }
 
@@ -465,6 +497,8 @@
         startEmulatorWithBuffer(savedRawBuffer, lastDiskLabel);
       } else if (window.emulator && typeof window.emulator.restart === "function") {
         window.emulator.restart();
+        isPaused = false;
+        updatePauseButton();
       } else {
         retryCloudLoad();
       }
@@ -675,6 +709,18 @@
         }
       });
     }
+
+    document.addEventListener("keydown", function(event) {
+      if (!event.ctrlKey || !event.altKey) return;
+      const key = event.key.toLowerCase();
+      if (key === "p") {
+        event.preventDefault();
+        togglePause();
+      } else if (key === "r") {
+        event.preventDefault();
+        restartEmulator();
+      }
+    });
 
     window.onload = async function() {
       setupDragAndDrop();

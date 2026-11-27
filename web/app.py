@@ -9,6 +9,7 @@ from pathlib import Path
 HOST = os.environ.get("HOST", "127.0.0.1")
 PORT = int(os.environ.get("PORT", "8080"))
 WEB_ROOT = Path(__file__).resolve().parent
+NOT_FOUND_PAGE = WEB_ROOT / "404.html"
 
 mimetypes.add_type("application/wasm", ".wasm")
 mimetypes.add_type("application/javascript", ".js")
@@ -26,7 +27,27 @@ class RangeHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def end_headers(self):
         self.send_header("Accept-Ranges", "bytes")
         self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Referrer-Policy", "strict-origin-when-cross-origin")
+        self.send_header("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
         super().end_headers()
+
+    def send_error(self, code, message=None, explain=None):
+        if code != 404 or not NOT_FOUND_PAGE.is_file():
+            return super().send_error(code, message, explain)
+
+        try:
+            body = NOT_FOUND_PAGE.read_bytes()
+        except OSError:
+            return super().send_error(code, message, explain)
+
+        self.log_error("code 404, message %s", message or "File not found")
+        self.send_response(404, "Not Found")
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        if self.command != "HEAD":
+            self.wfile.write(body)
 
     def _range_not_satisfiable(self, file_size):
         self.send_response(416)
@@ -46,9 +67,9 @@ class RangeHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         range_header = self.headers.get("Range")
 
         if range_header:
-            # This server supports one byte range per request.
+            # This server intentionally supports one byte range per request.
             match = re.fullmatch(r"bytes=(\d*)-(\d*)", range_header.strip())
-            if not match or "," in range_header:
+            if not match or "," in range_header or file_size == 0:
                 return self._range_not_satisfiable(file_size)
 
             first, last = match.groups()
@@ -112,4 +133,4 @@ if __name__ == "__main__":
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:
-            print("\\nServidor detenido.")
+            print("\nServidor detenido.")
