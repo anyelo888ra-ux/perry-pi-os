@@ -101,7 +101,7 @@ class Yonata:
         self.log=tk.Label(c,text="Las tareas se completarán en orden.",bg=CARD,fg=MUTED,font=("Sans",9)); self.log.pack()
         self.button(self.shell,"Cancelar",self.cancel).pack(anchor="e",pady=12)
         self.cancelled=False
-        threading.Thread(target=self.worker,args=(username,password),daemon=True).start()
+        threading.Thread(target=self.worker,args=(username,password,self.lang.get(),self.keyboard.get(),self.zone.get(),self.autologin.get()),daemon=True).start()
 
     def cancel(self):
         messagebox.showinfo("Yonata","No cierres el equipo durante una tarea. Si la configuración ya comenzó, deja que termine.")
@@ -109,7 +109,7 @@ class Yonata:
     def run(self,cmd,**kwargs):
         return subprocess.run(cmd,check=True,**kwargs)
 
-    def worker(self,username,password):
+    def worker(self,username,password,language,keyboard,zone_name,autologin):
         try:
             self.progress(8,"Creando cuenta personal")
             self.run(["sudo","useradd","-m","-s","/bin/bash","-G","sudo",username])
