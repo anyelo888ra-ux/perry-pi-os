@@ -13,12 +13,14 @@ PINNED=[
  ("🖼","Imágenes","viewnior"),
  ("📦","Archivos ZIP","xarchiver"),
  ("📊","Monitor","xterm -e htop","lxterminal -e htop"),
+ ("🎨","Fondos","python3 /usr/local/bin/perry-wallpaper.py"),
 ]
 ALL_APPS=[
  ("Navegador web","chromium","netsurf"),("Administrador de archivos","pcmanfm"),
  ("Terminal","lxterminal"),("Editor de texto","mousepad"),("Calculadora","galculator"),
  ("Visor de imágenes","viewnior"),("Gestor de archivos comprimidos","xarchiver"),
  ("Monitor del sistema","lxterminal -e htop"),("Apariencia","lxappearance"),
+ ("Fondos de escritorio","python3 /usr/local/bin/perry-wallpaper.py"),
 ]
 
 def launch(command):
