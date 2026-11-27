@@ -193,8 +193,7 @@ jobs:
             iso-build/config/includes.chroot_after_packages/etc/lightdm/lightdm.conf.d \
             iso-build/config/includes.chroot_after_packages/etc/sudoers.d \
             iso-build/config/includes.chroot_after_packages/home/perry-system/.config/openbox \
-            iso-build/config/includes.chroot_after_packages/home/perry-system/Desktop \
-            iso-build/config/includes.chroot_after_packages/root/isolinux
+            iso-build/config/includes.chroot_after_packages/home/perry-system/Desktop
           cd iso-build
 
           sudo lb config --mode debian --architecture amd64 --distribution bookworm \
