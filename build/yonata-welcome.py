@@ -123,10 +123,10 @@ class Yonata:
             with open(f"{home}/.config/openbox/autostart","w") as f:
                 f.write("python3 /usr/local/bin/perry-explorer.py &\n")
             with open(f"{home}/.xsessionrc","w") as f:
-                f.write(f"setxkbmap {KEYBOARDS[self.keyboard.get()]}\n")
+                f.write(f"setxkbmap {KEYBOARDS[keyboard]}\n")
             self.progress(48,"Aplicando idioma y teclado")
-            locale=LANGS[self.lang.get()]
-            zone=ZONES[self.zone.get()]
+            locale=LANGS[language]
+            zone=ZONES[zone_name]
             script=f"""set -e
 grep -qxF '{locale} UTF-8' /etc/locale.gen || echo '{locale} UTF-8' >> /etc/locale.gen
 locale-gen '{locale}'
@@ -137,10 +137,11 @@ ln -snf '/usr/share/zoneinfo/{zone}' /etc/localtime
             self.run(["sudo","bash","-c",script])
             self.progress(68,"Configurando sesión gráfica")
             self.run(["sudo","chown","-R",f"{username}:{username}",home])
-            auto=f"autologin-user={username}\nautologin-user-timeout=0" if self.autologin.get() else "autologin-user="
+            auto=f"autologin-user={username}\nautologin-user-timeout=0" if autologin else "autologin-user="
             conf=f"[Seat:*]\n{auto}\nuser-session=openbox\n"
             self.run(["sudo","bash","-c",f"printf '%s' '{conf}' > /etc/lightdm/lightdm.conf.d/99-perry.conf"])
             self.progress(86,"Protegiendo la cuenta temporal")
+            self.run(["sudo","touch","/home/perry-system/.perry_welcome_done"])
             # Revoca el acceso administrativo temporal al terminar el asistente.
             self.run(["sudo","rm","-f","/etc/sudoers.d/perry-system"])
             self.run(["sudo","passwd","-l","perry-system"])
