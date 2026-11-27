@@ -112,7 +112,11 @@ class Yonata:
     def worker(self,username,password,language,keyboard,zone_name,autologin):
         try:
             self.progress(8,"Creando cuenta personal")
-            self.run(["sudo","useradd","-m","-s","/bin/bash","-G","sudo",username])
+            exists=subprocess.run(["id","-u",username],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode==0
+            if not exists:
+                self.run(["sudo","useradd","-m","-s","/bin/bash","-G","sudo",username])
+            else:
+                self.run(["sudo","usermod","-aG","sudo",username])
             self.run(["sudo","chpasswd"],input=f"{username}:{password}\n".encode())
             home=f"/home/{username}"
             self.progress(28,"Preparando carpetas y escritorio")
@@ -141,11 +145,9 @@ ln -snf '/usr/share/zoneinfo/{zone}' /etc/localtime
             conf=f"[Seat:*]\n{auto}\nuser-session=openbox\n"
             self.run(["sudo","bash","-c",f"printf '%s' '{conf}' > /etc/lightdm/lightdm.conf.d/99-perry.conf"])
             self.progress(86,"Protegiendo la cuenta temporal")
-            self.run(["sudo","touch","/home/perry-system/.perry_welcome_done"])
-            # Revoca el acceso administrativo temporal al terminar el asistente.
-            self.run(["sudo","rm","-f","/etc/sudoers.d/perry-system"])
-            self.run(["sudo","passwd","-l","perry-system"])
-            self.run(["sudo","passwd","-l","root"])
+            # Un único proceso root completa la limpieza antes de revocar sudo.
+            cleanup_script="set -e; touch /home/perry-system/.perry_welcome_done; rm -f /etc/sudoers.d/perry-system; passwd -l perry-system; passwd -l root"
+            self.run(["sudo","bash","-c",cleanup_script])
             self.progress(100,"Configuración completada")
             self.root.after(0,self.done,username)
         except Exception as exc:
