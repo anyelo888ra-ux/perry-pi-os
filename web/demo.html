@@ -323,13 +323,6 @@
     let lastDiskLabel = "";
     let bootTimeoutId = null;
 
-    function cloneArrayBuffer(buf) {
-      if (!buf) return null;
-      const copy = new Uint8Array(buf.byteLength);
-      copy.set(new Uint8Array(buf));
-      return copy.buffer;
-    }
-
     function setStatus(text, type = "ok") {
       const el = document.getElementById("emu-status");
       if (!el) return;
