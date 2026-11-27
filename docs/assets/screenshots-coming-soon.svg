@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
+  <title id="title">Capturas de Perry Pi OS próximamente</title>
+  <desc id="desc">Ilustración de un escritorio Linux estilizado con una ventana y el anuncio de que las capturas oficiales estarán disponibles pronto.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#050b1c"/>
+      <stop offset=".55" stop-color="#071b3b"/>
+      <stop offset="1" stop-color="#160b35"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#00d9ff"/>
+      <stop offset="1" stop-color="#8b5cf6"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#0c1d3b"/>
+      <stop offset="1" stop-color="#10132d"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="560" rx="26" fill="url(#bg)"/>
+  <g opacity=".22" stroke="#148bdb" stroke-width="2" fill="none">
+    <path d="M0 105h170l38 38h150m-358 70h125l42-42h120m-287 210h170l40-40h160M1200 90h-150l-40 40H860m340 90h-100l-55 55H900m300 180h-170l-45-45H850"/>
+    <circle cx="170" cy="105" r="5"/><circle cx="358" cy="143" r="5"/><circle cx="1035" cy="90" r="5"/><circle cx="900" cy="275" r="5"/>
+  </g>
+  <ellipse cx="600" cy="285" rx="420" ry="180" fill="#087bce" opacity=".17" filter="url(#shadow)"/>
+  <rect x="170" y="92" width="860" height="340" rx="20" fill="#071126" stroke="url(#glow)" stroke-width="3"/>
+  <path d="M190 92h820a20 20 0 0 1 20 20v42H170v-42a20 20 0 0 1 20-20" fill="url(#panel)"/>
+  <circle cx="202" cy="126" r="7" fill="#ff5c78"/><circle cx="228" cy="126" r="7" fill="#ffc857"/><circle cx="254" cy="126" r="7" fill="#39d98a"/>
+  <rect x="210" y="184" width="190" height="210" rx="12" fill="#0b1b36" stroke="#164b79"/>
+  <rect x="430" y="184" width="560" height="210" rx="12" fill="#0a1730" stroke="#164b79"/>
+  <g fill="#12345c"><rect x="235" y="210" width="140" height="13" rx="6"/><rect x="235" y="244" width="110" height="10" rx="5"/><rect x="235" y="272" width="125" height="10" rx="5"/><rect x="235" y="300" width="95" height="10" rx="5"/></g>
+  <g stroke="url(#glow)" stroke-width="3" fill="none" opacity=".9"><path d="M470 345l95-90 75 45 100-105 90 75"/><path d="M470 365h430"/></g>
+  <g fill="#00d9ff"><circle cx="565" cy="255" r="5"/><circle cx="640" cy="300" r="5"/><circle cx="740" cy="195" r="5"/><circle cx="830" cy="270" r="5"/></g>
+  <rect x="170" y="408" width="860" height="24" rx="0" fill="#081126"/>
+  <circle cx="203" cy="420" r="7" fill="#00cfff"/><rect x="230" y="414" width="54" height="11" rx="5" fill="#1b4773"/><rect x="298" y="414" width="54" height="11" rx="5" fill="#1b4773"/>
+  <text x="600" y="485" text-anchor="middle" fill="#f4f8ff" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="34" font-weight="700">Capturas oficiales próximamente</text>
+  <text x="600" y="520" text-anchor="middle" fill="#a9c4e8" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18">Estamos preparando imágenes del escritorio y del asistente Yonata.</text>
+</svg>
