@@ -196,7 +196,7 @@ jobs:
             iso-build/config/includes.chroot_after_packages/home/perry-system/Desktop
           cd iso-build
 
-          lb config --mode debian --architecture amd64 --distribution bookworm \
+          sudo lb config --mode debian --architecture amd64 --distribution bookworm \
             --mirror-bootstrap http://deb.debian.org/debian \
             --mirror-chroot http://deb.debian.org/debian \
             --mirror-binary http://deb.debian.org/debian \
@@ -206,7 +206,7 @@ jobs:
             --binary-images iso-hybrid \
             --bootappend-live "boot=live components username=perry-system hostname=perry-pi-os"
 
-          echo 'APT_INDICES="false"' >> config/chroot
+          echo 'APT_INDICES="false"' | sudo tee -a config/chroot >/dev/null
 
           cat << 'EOF' > config/package-lists/perry.list.chroot
           linux-image-amd64 xorg openbox lxterminal pcmanfm tint2 mousepad chromium galculator viewnior htop feh procps python3 python3-tk espeak-ng lightdm sudo dbus-x11 locales x11-xkb-utils xarchiver lxappearance lxpolkit
@@ -272,7 +272,7 @@ jobs:
           sudo install -d -m 0755 /root/isolinux
           sudo install -m 0644 "$ISOLINUX_BIN" /root/isolinux/isolinux.bin
           sudo install -m 0644 "$VESAMENU_BIN" /root/isolinux/vesamenu.c32
-          ls -l /root/isolinux/
+          sudo ls -l /root/isolinux/
 
           sudo lb build
           mv live-image-amd64.hybrid.iso ../perry-pi-os-local-x64.iso
