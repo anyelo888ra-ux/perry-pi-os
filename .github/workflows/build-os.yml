@@ -246,9 +246,9 @@ jobs:
                    config/includes.chroot_after_packages/usr/local/bin/perry-panel.py \
                    config/includes.chroot_after_packages/home/perry-system/Desktop/Yonata.desktop
 
-          # live-build ejecuta la fase Syslinux dentro del chroot.
-          # Por eso estos archivos deben entrar en el sistema objetivo,
-          # no en /root del runner de GitHub Actions.
+          # live-build 3 ejecuta lb_binary_syslinux en el runner como root.
+          # Esa fase busca literalmente /root/isolinux/* en el HOST,
+          # no dentro del chroot. Preparar ese directorio antes de lb build.
           ISOLINUX_BIN="$(dpkg -L isolinux | awk '/\/isolinux\.bin$/ { print; exit }')"
           VESAMENU_BIN="$(dpkg -L syslinux-common | awk '/\/vesamenu\.c32$/ { print; exit }')"
 
@@ -270,9 +270,12 @@ jobs:
             exit 1
           fi
 
-          install -m 0644 "$ISOLINUX_BIN" config/includes.chroot_after_packages/root/isolinux/isolinux.bin
-          install -m 0644 "$VESAMENU_BIN" config/includes.chroot_after_packages/root/isolinux/vesamenu.c32
-          ls -l config/includes.chroot_after_packages/root/isolinux/
+          sudo install -D -m 0644 "$ISOLINUX_BIN" /root/isolinux/isolinux.bin
+          sudo install -D -m 0644 "$VESAMENU_BIN" /root/isolinux/vesamenu.c32
+          sudo test -s /root/isolinux/isolinux.bin
+          sudo test -s /root/isolinux/vesamenu.c32
+          sudo ls -lh /root/isolinux/
+          echo "Syslinux boot files staged in the host path expected by lb_binary_syslinux."
 
           sudo lb build
           mv live-image-amd64.hybrid.iso ../perry-pi-os-local-x64.iso
