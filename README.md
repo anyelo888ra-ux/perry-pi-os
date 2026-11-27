@@ -13,6 +13,15 @@
   <a href="https://github.com/anyelo888ra-ux/perry-pi-os/actions/workflows/build-os.yml">
     <img src="https://github.com/anyelo888ra-ux/perry-pi-os/actions/workflows/build-os.yml/badge.svg" alt="Estado de compilación">
   </a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="Licencia MIT"></a>
+</p>
+
+## Capturas del escritorio
+
+Las capturas oficiales de Perry Pi OS todavía están en preparación. Esta sección se actualizará cuando estén listas las imágenes del escritorio, el menú Perry y el asistente Yonata.
+
+<p align="center">
+  <img src="docs/assets/screenshots-coming-soon.svg" alt="Capturas oficiales de Perry Pi OS próximamente" width="100%">
 </p>
 
 ## Ediciones
