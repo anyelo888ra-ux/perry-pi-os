@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "site_name": "Perry Pi OS",
+  "site_url": "https://anyelo888ra-ux.github.io/perry-pi-os/",
+  "language": "es",
+  "generated_for": "NEXUS / buscadores externos",
+  "pages": [
+    {
+      "url": "https://anyelo888ra-ux.github.io/perry-pi-os/",
+      "title": "Perry Pi OS — Centro oficial",
+      "description": "Sistema ligero basado en Debian 12, con Openbox, Perry Panel y asistente Yonata. Ediciones Web, Normal amd64 y Local ISO.",
+      "keywords": [
+        "Perry Pi OS",
+        "Linux",
+        "Debian 12",
+        "Openbox",
+        "sistema operativo",
+        "i386",
+        "amd64"
+      ]
+    },
+    {
+      "url": "https://anyelo888ra-ux.github.io/perry-pi-os/demo.html",
+      "title": "Perry Pi OS — Emulador Web",
+      "description": "Prueba Perry Pi OS desde el navegador con el emulador v86.",
+      "keywords": [
+        "demo",
+        "emulador",
+        "v86",
+        "web",
+        "i386"
+      ]
+    },
+    {
+      "url": "https://anyelo888ra-ux.github.io/perry-pi-os/downloads.html",
+      "title": "Descargas — Perry Pi OS",
+      "description": "Consulta los archivos publicados en la última GitHub Release de Perry Pi OS.",
+      "keywords": [
+        "descargas",
+        "ISO",
+        "IMG",
+        "releases",
+        "amd64"
+      ]
+    },
+    {
+      "url": "https://anyelo888ra-ux.github.io/perry-pi-os/guide.html",
+      "title": "Guía de inicio — Perry Pi OS",
+      "description": "Guía para probar Perry Pi OS, iniciar la edición web en QEMU y solucionar problemas comunes.",
+      "keywords": [
+        "guía",
+        "QEMU",
+        "instalación",
+        "primer inicio"
+      ]
+    }
+  ]
+}
