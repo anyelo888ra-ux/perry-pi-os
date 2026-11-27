@@ -40,7 +40,7 @@ jobs:
           fi
 
           python3 -m py_compile build/yonata-welcome.py build/perry-explorer.py build/perry-panel.py
-                    cp build/yonata-welcome.py yonata.py
+          cp build/yonata-welcome.py yonata.py
           cp build/perry-explorer.py perry-explorer.py
           cp build/perry-panel.py perry-panel.py
 
