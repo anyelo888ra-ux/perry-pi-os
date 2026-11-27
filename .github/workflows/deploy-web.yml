@@ -6,19 +6,57 @@ on:
     paths:
       - "web/**"
       - ".github/workflows/deploy-web.yml"
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "web/**"
+      - ".github/workflows/deploy-web.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: "pages"
   cancel-in-progress: false
 
 jobs:
+  validate:
+    name: Validar demo y servidor web
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar código del repositorio
+        uses: actions/checkout@v4
+
+      - name: Comprobar archivos y sintaxis
+        run: |
+          set -euo pipefail
+          test -f web/index.html
+          test -f web/demo.html
+          test -f web/libv86.js
+          test -f web/v86.wasm
+          test -f web/seabios.bin
+          test -f web/vgabios.bin
+          python3 -m py_compile web/app.py
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          html = Path("web/demo.html").read_text(encoding="utf-8")
+          scripts = re.findall(r"<script(?:\s[^>]*)?>(.*?)</script>", html, flags=re.I | re.S)
+          inline_scripts = [script for script in scripts if script.strip()]
+          if not inline_scripts:
+              raise SystemExit("No se encontró el JavaScript de la demo")
+          Path("/tmp/perry-demo-inline.js").write_text("\n;\n".join(inline_scripts), encoding="utf-8")
+          PY
+          node --check /tmp/perry-demo-inline.js
+
   deploy:
+    needs: validate
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

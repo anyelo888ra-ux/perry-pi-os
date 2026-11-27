@@ -251,8 +251,7 @@
     <div class="info">
       <strong>🍓 Perry Pi OS</strong>
       <span id="emu-status" class="status-badge">● Iniciando motor...</span>
-      <span>Usuario: <code>perry</code></span>
-      <span>Clave: <code>perry</code></span>
+      <span>Configuración inicial: <code>Yonata</code></span>
     </div>
     <div class="actions">
       <a class="btn-link" href="index.html">← Inicio</a>
@@ -262,7 +261,7 @@
         <option value="768">RAM: 768 MB</option>
       </select>
       <label class="btn-file" for="file-input">📂 Cargar .img / .img.gz</label>
-      <input id="file-input" type="file" accept=".img,.gz,.iso" onchange="handleLocalFile(event)">
+      <input id="file-input" type="file" accept=".img,.gz" onchange="handleLocalFile(event)">
       <button type="button" class="btn-secondary" onclick="retryCloudLoad()">Reintentar Nube</button>
       <button type="button" class="btn-secondary" onclick="restartEmulator()">Reiniciar</button>
       <button type="button" onclick="toggleFullscreen()">Pantalla Completa</button>
@@ -301,7 +300,7 @@
   </div>
 
   <div class="hint-bar">
-    <span>Clic en la pantalla para enfocar teclado • Arrastra un <code>.img</code> / <code>.img.gz</code> aquí si falla la nube.</span>
+    <span>Clic en la pantalla para enfocar teclado • Arrastra una imagen de disco .img o .img.gz aquí.</span>
     <span id="disk-label">Disco: <code>perry-pi-os-web.img.gz</code> / <code>perry-pi-os-web.img</code></span>
   </div>
 
@@ -323,13 +322,6 @@
     let savedRawBuffer = null;
     let lastDiskLabel = "";
     let bootTimeoutId = null;
-
-    function cloneArrayBuffer(buf) {
-      if (!buf) return null;
-      const copy = new Uint8Array(buf.byteLength);
-      copy.set(new Uint8Array(buf));
-      return copy.buffer;
-    }
 
     function setStatus(text, type = "ok") {
       const el = document.getElementById("emu-status");
@@ -374,7 +366,8 @@
         urlInput.value = customDisk || DEFAULT_RELEASE_URL;
       }
       if (reason && reasonText) {
-        reason.innerHTML = reasonText + "<br><br>Puedes subir tu archivo <code>.img</code> o <code>.img.gz</code> desde tu equipo, arrastrarlo aquí o probar una URL.";
+        const safeText = String(reasonText).replace(/<[^>]*>/g, "");
+        reason.textContent = safeText + "\n\nPuedes subir un archivo .img o .img.gz desde tu equipo, arrastrarlo aquí o probar una URL.";
       }
       if (box) box.style.display = "block";
     }
@@ -387,7 +380,7 @@
     function setDiskLabel(text) {
       lastDiskLabel = text;
       const el = document.getElementById("disk-label");
-      if (el) el.innerHTML = "Disco: <code>" + text + "</code>";
+      if (el) el.textContent = "Disco: " + String(text);
     }
 
     function toggleFullscreen() {
@@ -410,8 +403,12 @@
     }
 
     function startEmulatorWithBuffer(rawBuffer, labelText) {
+      if (!(rawBuffer instanceof ArrayBuffer) || rawBuffer.byteLength === 0) {
+        throw new Error("La imagen está vacía o no es un archivo de disco válido.");
+      }
       hideFallback();
-      savedRawBuffer = cloneArrayBuffer(rawBuffer);
+      // Conserva una sola copia del disco: las imágenes pueden ocupar varios GB.
+      savedRawBuffer = rawBuffer;
       if (labelText) setDiskLabel(labelText);
 
       if (bootTimeoutId) {
@@ -426,20 +423,28 @@
       setProgress(true, "Iniciando máquina virtual v86...", 95);
       setStatus("Arrancando...", "busy");
 
-      window.emulator = new V86({
-        wasm_path: "v86.wasm",
-        memory_size: currentRamMb * 1024 * 1024,
-        vga_memory_size: 16 * 1024 * 1024,
-        screen_container: document.getElementById("screen_container"),
-        bios: { url: "seabios.bin" },
-        vga_bios: { url: "vgabios.bin" },
-        hda: { buffer: cloneArrayBuffer(savedRawBuffer) },
-        autostart: true
-      });
+      try {
+        window.emulator = new V86({
+          wasm_path: "v86.wasm",
+          memory_size: currentRamMb * 1024 * 1024,
+          vga_memory_size: 16 * 1024 * 1024,
+          screen_container: document.getElementById("screen_container"),
+          bios: { url: "seabios.bin" },
+          vga_bios: { url: "vgabios.bin" },
+          hda: { buffer: savedRawBuffer },
+          autostart: true
+        });
+      } catch (error) {
+        setProgress(false);
+        setStatus("No se pudo iniciar v86", "error");
+        showFallback(error && error.message ? error.message : "Error al crear la máquina virtual.");
+        throw error;
+      }
 
       bootTimeoutId = setTimeout(() => {
         setProgress(false);
-      }, 6000);
+        setStatus("El arranque está tardando demasiado", "error");
+      }, 120000);
 
       window.emulator.add_listener("emulator-ready", function() {
         setStatus("Emulador listo", "ok");
@@ -499,8 +504,7 @@
       return await new Response(decompressed).arrayBuffer();
     }
 
-    async function fetchWithProgress(url, onProgress) {
-      const res = await fetch(url, { cache: "no-store" });
+    async function readResponseWithProgress(res, onProgress) {
       if (!res.ok) {
         throw new Error("HTTP " + res.status);
       }
@@ -532,31 +536,37 @@
     }
 
     async function tryLoadSingleSource(src) {
-      const isGz = src.url.toLowerCase().endsWith(".gz");
+      const parsedUrl = new URL(src.url, window.location.href);
+      if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+        throw new Error("Solo se permiten direcciones HTTP o HTTPS.");
+      }
+      if (parsedUrl.username || parsedUrl.password) {
+        throw new Error("La URL no debe incluir credenciales.");
+      }
+
+      const isGz = parsedUrl.pathname.toLowerCase().endsWith(".gz");
       setProgress(true, "Descargando " + src.label + "...", 15);
 
-      const res = await fetch(src.url, { cache: "no-store" });
+      // Leer la respuesta una sola vez: evita descargar imágenes grandes dos veces.
+      const res = await fetch(parsedUrl.href, { cache: "no-store" });
       if (!res.ok) {
         throw new Error("HTTP " + res.status);
       }
 
-      if (isGz && res.body) {
+      if (isGz) {
         const total = Number(res.headers.get("Content-Length") || 0);
-        const rawBuffer = await decompressGzipStream(res.body, total, (pct) => {
-          setProgress(true, "Descargando y descomprimiendo " + src.label + "...", pct);
-        });
+        const onProgress = (pct) => setProgress(true, "Descargando y descomprimiendo " + src.label + "...", pct);
+        const rawBuffer = res.body
+          ? await decompressGzipStream(res.body, total, onProgress)
+          : await decompressGzipStream(new Response(await res.arrayBuffer()).body, total, onProgress);
         startEmulatorWithBuffer(rawBuffer, src.label + " (descomprimido)");
         return;
       }
 
-      const rawBuffer = await fetchWithProgress(src.url, (pct) => {
-        setProgress(true, "Cargando " + src.label + "...", pct);
+      const rawBuffer = await readResponseWithProgress(res, (pct) => {
+        setProgress(true, "Descargando " + src.label + "...", pct);
       });
-      const finalBuffer = isGz
-        ? await decompressGzipStream(new Response(rawBuffer).body, rawBuffer.byteLength, null)
-        : rawBuffer;
-
-      startEmulatorWithBuffer(finalBuffer, src.label);
+      startEmulatorWithBuffer(rawBuffer, src.label);
     }
 
     async function loadFromCloud() {
@@ -590,10 +600,12 @@
       hideFallback();
       setStatus("Descargando URL...", "busy");
       try {
-        await tryLoadSingleSource({ url, label: url });
+        const parsed = new URL(url, window.location.href);
+        await tryLoadSingleSource({ url: parsed.href, label: parsed.hostname + parsed.pathname });
       } catch (err) {
+        setProgress(false);
         setStatus("Error en URL", "error");
-        showFallback("Falló la descarga desde <code>" + url + "</code>: " + (err && err.message ? err.message : err));
+        showFallback("No se pudo cargar la URL: " + (err && err.message ? err.message : String(err)));
       }
     }
 
@@ -606,6 +618,10 @@
       try {
         hideFallback();
         setStatus("Cargando archivo local...", "busy");
+
+        if (!/\.(img|gz)$/i.test(file.name)) {
+          throw new Error("Formato no compatible. Selecciona una imagen .img o .img.gz; las ISO no se pueden conectar como disco duro.");
+        }
 
         if (file.name.toLowerCase().endsWith(".gz")) {
           setProgress(true, "Descomprimiendo " + file.name + "...", 10);
@@ -621,7 +637,7 @@
       } catch (err) {
         setProgress(false);
         setStatus(err.message || "Error al cargar archivo", "error");
-        showFallback("Error al leer el archivo local <code>" + file.name + "</code>: " + (err.message || err));
+        showFallback("Error al leer el archivo local " + file.name + ": " + (err.message || err));
         console.error(err);
       }
     }

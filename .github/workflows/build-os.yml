@@ -9,9 +9,16 @@ on:
       - "build/**"
       - ".github/workflows/build-os.yml"
       - "wallpaper.png"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "build/**"
+      - ".github/workflows/build-os.yml"
+      - "wallpaper.png"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build-web-32bit:
@@ -37,7 +44,6 @@ jobs:
           from tkinter import ttk, messagebox
           import subprocess, threading, platform, os, shutil, re
 
-          FLAG = os.path.expanduser("~/.perry_setup_done")
           WALLPAPER = "/usr/share/backgrounds/perry-pi-os/wallpaper.png"
 
           def hablar(t):
@@ -124,8 +130,8 @@ jobs:
               def start_install(self):
                   username = self.user_entry.get().strip()
                   password = self.pass_entry.get()
-                  if not re.match(r"^[a-z_][a-z0-9_-]{0,31}$", username):
-                      messagebox.showerror("Usuario inválido", "Usa minúsculas, números, guion o guion bajo (sin espacios).")
+                  if not re.match(r"^[a-z_][a-z0-9_-]{0,31}$", username) or username == "perry-system":
+                      messagebox.showerror("Usuario inválido", "Usa un nombre válido. 'perry-system' está reservado para el asistente.")
                       return
                   if len(password) < 1:
                       messagebox.showerror("Contraseña requerida", "Escribe una contraseña para el nuevo usuario.")
@@ -140,7 +146,7 @@ jobs:
               def _worker(self, username, password, visual_login):
                   try:
                       # Crear usuario si no existe y asignar contraseña + sudo
-                      subprocess.run(["sudo", "useradd", "-m", "-s", "/bin/bash", "-G", "sudo", username], check=False)
+                      subprocess.run(["sudo", "useradd", "-m", "-s", "/bin/bash", "-G", "sudo", username], check=True)
                       proc = subprocess.run(
                           ["sudo", "chpasswd"],
                           input=f"{username}:{password}\n".encode("utf-8"),
@@ -166,6 +172,8 @@ jobs:
                       with open(f"{new_home}/.config/openbox/autostart", "w", encoding="utf-8") as f:
                           f.write(autostart_content)
 
+                      with open(os.path.join(new_home, ".perry_welcome_done"), "w", encoding="utf-8") as f:
+                          f.write("ok")
                       subprocess.run(["sudo", "chown", "-R", f"{username}:{username}", new_home], check=True)
 
                       # Configurar LightDM: login visual o autologin al nuevo usuario
@@ -178,12 +186,10 @@ jobs:
                           f.write(lightdm_conf)
                       subprocess.run(["sudo", "mv", "/tmp/perry-lightdm.conf", "/etc/lightdm/lightdm.conf.d/99-perry.conf"], check=True)
 
-                      with open(FLAG, "w", encoding="utf-8") as f:
-                          f.write("ok")
-
                       self.r.after(0, self._done, username, visual_login)
                   except Exception as e:
-                      self.r.after(0, lambda: messagebox.showerror("Error", str(e)))
+                      message = str(e)
+                      self.r.after(0, lambda: messagebox.showerror("Error", message))
                       self.r.after(0, lambda: self.btn.config(state="normal"))
 
               def _done(self, username, visual_login):
@@ -304,14 +310,15 @@ jobs:
           passwd -d perry-system || true
           echo "perry-system ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/perry-system
           chmod 0440 /etc/sudoers.d/perry-system
-          echo "root:perry" | chpasswd
 
           mkdir -p /etc/lightdm/lightdm.conf.d /home/perry-system/.config/openbox /home/perry-system/Desktop
           printf '[Seat:*]\nautologin-user=perry-system\nautologin-user-timeout=0\nuser-session=openbox\n' > /etc/lightdm/lightdm.conf.d/99-perry.conf
 
           cat << 'AUTOEOF' > /home/perry-system/.config/openbox/autostart
           python3 /usr/local/bin/perry-explorer.py &
-          python3 /usr/local/bin/yonata-welcome.py &
+          if [ ! -f "$HOME/.perry_welcome_done" ]; then
+            python3 /usr/local/bin/yonata-welcome.py &
+          fi
           AUTOEOF
 
           cat << 'DESKEOF' > /home/perry-system/Desktop/Yonata.desktop
@@ -406,7 +413,6 @@ jobs:
           from tkinter import ttk, messagebox
           import subprocess, threading, platform, os, shutil, re
 
-          FLAG = os.path.expanduser("~/.perry_setup_done")
           WALLPAPER = "/usr/share/backgrounds/perry-pi-os/wallpaper.png"
 
           def hablar(t):
@@ -459,32 +465,37 @@ jobs:
               def start_install(self):
                   username = self.user_entry.get().strip()
                   password = self.pass_entry.get()
-                  if not re.match(r"^[a-z_][a-z0-9_-]{0,31}$", username) or not password:
-                      messagebox.showerror("Datos inválidos", "Ingresa un usuario válido y una contraseña.")
+                  if not re.match(r"^[a-z_][a-z0-9_-]{0,31}$", username) or not password or username == "perry-system":
+                      messagebox.showerror("Datos inválidos", "Ingresa un usuario válido, una contraseña y evita el nombre reservado 'perry-system'.")
                       return
                   self.btn.config(state="disabled")
                   self.pb["value"] = 40
                   threading.Thread(target=self._worker, args=(username, password, self.login_visual_var.get()), daemon=True).start()
 
               def _worker(self, username, password, visual_login):
-                  subprocess.run(["sudo", "useradd", "-m", "-s", "/bin/bash", "-G", "sudo", username], check=False)
-                  subprocess.run(["sudo", "chpasswd"], input=f"{username}:{password}\n".encode("utf-8"), check=True)
-                  new_home = f"/home/{username}"
-                  os.makedirs(f"{new_home}/.config/openbox", exist_ok=True)
-                  if os.path.exists(WALLPAPER):
-                      os.makedirs(f"{new_home}/.local/share/backgrounds", exist_ok=True)
-                      shutil.copy2(WALLPAPER, f"{new_home}/.local/share/backgrounds/wallpaper.png")
-                  with open(f"{new_home}/.config/openbox/autostart", "w", encoding="utf-8") as f:
-                      f.write("python3 /usr/local/bin/perry-explorer.py &\n")
-                  subprocess.run(["sudo", "chown", "-R", f"{username}:{username}", new_home], check=True)
-                  conf = "[Seat:*]\nautologin-user=\nuser-session=openbox\n" if visual_login else f"[Seat:*]\nautologin-user={username}\nautologin-user-timeout=0\nuser-session=openbox\n"
-                  with open("/tmp/perry-lightdm.conf", "w", encoding="utf-8") as f:
-                      f.write(conf)
-                  subprocess.run(["sudo", "mv", "/tmp/perry-lightdm.conf", "/etc/lightdm/lightdm.conf.d/99-perry.conf"], check=True)
-                  with open(FLAG, "w", encoding="utf-8") as f:
-                      f.write("ok")
-                  self.r.after(0, lambda: (self.pb.config(value=100), self.desc.config(text=f"Usuario '{username}' creado."), self.btn.config(text="Cerrar", bg="#3b82f6", state="normal", command=self.r.destroy)))
+                  try:
+                      subprocess.run(["sudo", "useradd", "-m", "-s", "/bin/bash", "-G", "sudo", username], check=True)
+                      subprocess.run(["sudo", "chpasswd"], input=f"{username}:{password}\n".encode("utf-8"), check=True)
+                      new_home = f"/home/{username}"
+                      os.makedirs(f"{new_home}/.config/openbox", exist_ok=True)
+                      if os.path.exists(WALLPAPER):
+                          os.makedirs(f"{new_home}/.local/share/backgrounds", exist_ok=True)
+                          shutil.copy2(WALLPAPER, f"{new_home}/.local/share/backgrounds/wallpaper.png")
+                      with open(f"{new_home}/.config/openbox/autostart", "w", encoding="utf-8") as f:
+                          f.write("python3 /usr/local/bin/perry-explorer.py &\n")
+                      with open(os.path.join(new_home, ".perry_welcome_done"), "w", encoding="utf-8") as f:
+                          f.write("ok")
+                      subprocess.run(["sudo", "chown", "-R", f"{username}:{username}", new_home], check=True)
+                      conf = "[Seat:*]\nautologin-user=\nuser-session=openbox\n" if visual_login else f"[Seat:*]\nautologin-user={username}\nautologin-user-timeout=0\nuser-session=openbox\n"
+                      with open("/tmp/perry-lightdm.conf", "w", encoding="utf-8") as f:
+                          f.write(conf)
+                      subprocess.run(["sudo", "mv", "/tmp/perry-lightdm.conf", "/etc/lightdm/lightdm.conf.d/99-perry.conf"], check=True)
+                      self.r.after(0, lambda: (self.pb.config(value=100), self.desc.config(text=f"Usuario '{username}' creado."), self.btn.config(text="Cerrar", bg="#3b82f6", state="normal", command=self.r.destroy)))
 
+                  except Exception as error:
+                      message = str(error)
+                      self.r.after(0, lambda: messagebox.showerror("Error", message))
+                      self.r.after(0, lambda: self.btn.config(state="normal"))
           if __name__ == "__main__":
               root = tk.Tk()
               Yonata(root)
@@ -528,7 +539,9 @@ jobs:
 
           cat << 'AUTOEOF' > config/includes.chroot_after_packages/home/perry-system/.config/openbox/autostart
           python3 /usr/local/bin/perry-explorer.py &
-          python3 /usr/local/bin/yonata-welcome.py &
+          if [ ! -f "$HOME/.perry_welcome_done" ]; then
+            python3 /usr/local/bin/yonata-welcome.py &
+          fi
           AUTOEOF
 
           cat << 'DESKEOF' > config/includes.chroot_after_packages/home/perry-system/Desktop/Yonata.desktop
@@ -612,7 +625,6 @@ jobs:
           from tkinter import ttk, messagebox
           import subprocess, threading, platform, os, shutil, re
 
-          FLAG = os.path.expanduser("~/.perry_setup_done")
           WALLPAPER = "/usr/share/backgrounds/perry-pi-os/wallpaper.png"
 
           def hablar(t):
@@ -665,32 +677,37 @@ jobs:
               def start_install(self):
                   username = self.user_entry.get().strip()
                   password = self.pass_entry.get()
-                  if not re.match(r"^[a-z_][a-z0-9_-]{0,31}$", username) or not password:
-                      messagebox.showerror("Datos inválidos", "Ingresa un usuario válido y una contraseña.")
+                  if not re.match(r"^[a-z_][a-z0-9_-]{0,31}$", username) or not password or username == "perry-system":
+                      messagebox.showerror("Datos inválidos", "Ingresa un usuario válido, una contraseña y evita el nombre reservado 'perry-system'.")
                       return
                   self.btn.config(state="disabled")
                   self.pb["value"] = 40
                   threading.Thread(target=self._worker, args=(username, password, self.login_visual_var.get()), daemon=True).start()
 
               def _worker(self, username, password, visual_login):
-                  subprocess.run(["sudo", "useradd", "-m", "-s", "/bin/bash", "-G", "sudo", username], check=False)
-                  subprocess.run(["sudo", "chpasswd"], input=f"{username}:{password}\n".encode("utf-8"), check=True)
-                  new_home = f"/home/{username}"
-                  os.makedirs(f"{new_home}/.config/openbox", exist_ok=True)
-                  if os.path.exists(WALLPAPER):
-                      os.makedirs(f"{new_home}/.local/share/backgrounds", exist_ok=True)
-                      shutil.copy2(WALLPAPER, f"{new_home}/.local/share/backgrounds/wallpaper.png")
-                  with open(f"{new_home}/.config/openbox/autostart", "w", encoding="utf-8") as f:
-                      f.write("python3 /usr/local/bin/perry-explorer.py &\n")
-                  subprocess.run(["sudo", "chown", "-R", f"{username}:{username}", new_home], check=True)
-                  conf = "[Seat:*]\nautologin-user=\nuser-session=openbox\n" if visual_login else f"[Seat:*]\nautologin-user={username}\nautologin-user-timeout=0\nuser-session=openbox\n"
-                  with open("/tmp/perry-lightdm.conf", "w", encoding="utf-8") as f:
-                      f.write(conf)
-                  subprocess.run(["sudo", "mv", "/tmp/perry-lightdm.conf", "/etc/lightdm/lightdm.conf.d/99-perry.conf"], check=True)
-                  with open(FLAG, "w", encoding="utf-8") as f:
-                      f.write("ok")
-                  self.r.after(0, lambda: (self.pb.config(value=100), self.desc.config(text=f"Usuario '{username}' creado."), self.btn.config(text="Cerrar", bg="#3b82f6", state="normal", command=self.r.destroy)))
+                  try:
+                      subprocess.run(["sudo", "useradd", "-m", "-s", "/bin/bash", "-G", "sudo", username], check=True)
+                      subprocess.run(["sudo", "chpasswd"], input=f"{username}:{password}\n".encode("utf-8"), check=True)
+                      new_home = f"/home/{username}"
+                      os.makedirs(f"{new_home}/.config/openbox", exist_ok=True)
+                      if os.path.exists(WALLPAPER):
+                          os.makedirs(f"{new_home}/.local/share/backgrounds", exist_ok=True)
+                          shutil.copy2(WALLPAPER, f"{new_home}/.local/share/backgrounds/wallpaper.png")
+                      with open(f"{new_home}/.config/openbox/autostart", "w", encoding="utf-8") as f:
+                          f.write("python3 /usr/local/bin/perry-explorer.py &\n")
+                      with open(os.path.join(new_home, ".perry_welcome_done"), "w", encoding="utf-8") as f:
+                          f.write("ok")
+                      subprocess.run(["sudo", "chown", "-R", f"{username}:{username}", new_home], check=True)
+                      conf = "[Seat:*]\nautologin-user=\nuser-session=openbox\n" if visual_login else f"[Seat:*]\nautologin-user={username}\nautologin-user-timeout=0\nuser-session=openbox\n"
+                      with open("/tmp/perry-lightdm.conf", "w", encoding="utf-8") as f:
+                          f.write(conf)
+                      subprocess.run(["sudo", "mv", "/tmp/perry-lightdm.conf", "/etc/lightdm/lightdm.conf.d/99-perry.conf"], check=True)
+                      self.r.after(0, lambda: (self.pb.config(value=100), self.desc.config(text=f"Usuario '{username}' creado."), self.btn.config(text="Cerrar", bg="#3b82f6", state="normal", command=self.r.destroy)))
 
+                  except Exception as error:
+                      message = str(error)
+                      self.r.after(0, lambda: messagebox.showerror("Error", message))
+                      self.r.after(0, lambda: self.btn.config(state="normal"))
           if __name__ == "__main__":
               root = tk.Tk()
               Yonata(root)
@@ -752,14 +769,15 @@ jobs:
           passwd -d perry-system || true
           echo "perry-system ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/perry-system
           chmod 0440 /etc/sudoers.d/perry-system
-          echo "root:perry" | chpasswd
 
           mkdir -p /etc/lightdm/lightdm.conf.d /home/perry-system/.config/openbox /home/perry-system/Desktop
           printf '[Seat:*]\nautologin-user=perry-system\nautologin-user-timeout=0\nuser-session=openbox\n' > /etc/lightdm/lightdm.conf.d/99-perry.conf
 
           cat << 'AUTOEOF' > /home/perry-system/.config/openbox/autostart
           python3 /usr/local/bin/perry-explorer.py &
-          python3 /usr/local/bin/yonata-welcome.py &
+          if [ ! -f "$HOME/.perry_welcome_done" ]; then
+            python3 /usr/local/bin/yonata-welcome.py &
+          fi
           AUTOEOF
 
           cat << 'DESKEOF' > /home/perry-system/Desktop/Yonata.desktop
@@ -806,12 +824,13 @@ jobs:
   publish-release:
     name: 4. Publicar todo en GitHub Releases
     needs: [build-web-32bit, build-iso-64bit, build-normal-64bit]
-    if: always()
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
       - name: Descargar artefactos disponibles
         uses: actions/download-artifact@v4
-        continue-on-error: true
         with:
           path: release-assets
           merge-multiple: true

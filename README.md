@@ -8,12 +8,16 @@ Sistema operativo ligero basado en **Debian 12 (Bookworm)** con entorno **Xorg +
 * **Local ISO 64-bit (`perry-pi-os-local-x64.iso`):** Imagen híbrida booteable (`amd64` / `live-build`) con `chromium`, `mousepad`, `pcmanfm`, `lxterminal`, `galculator`, `viewnior`, `htop` y **Yonata**.
 * **Normal 64-bit (`perry-pi-os-normal-x64.img`):** Imagen de disco instalada (`amd64` / `linux-image-amd64`) con las mismas herramientas de escritorio, utilidades y asistente **Yonata**.
 
-## Acceso y credenciales
+## Primer inicio y cuentas
 
-* **Usuario:** `perry`
-* **Contraseña:** `perry`
-* **Root:** `perry`
-* **Sesión gráfica:** Configurada con `lightdm` y autologin en **Openbox** con barra `tint2` y acceso directo a **Yonata Asistente** en el escritorio.
+* Las imágenes generadas por GitHub Actions inician en una sesión temporal de configuración llamada `perry-system`.
+* **Yonata** solicita crear el usuario personal y su contraseña durante el primer inicio.
+* No se publica una contraseña predeterminada para el usuario ni para `root`.
+* Tras configurar el usuario, la sesión gráfica queda preparada para usar Openbox y la barra `tint2`.
+
+**Aviso de seguridad pendiente:** la cuenta temporal `perry-system` se inicia automáticamente y conserva una regla `NOPASSWD` para el asistente. Esta revisión aún no revoca esa regla al finalizar Yonata. No distribuyas ni expongas estas imágenes en equipos conectados a redes no confiables hasta corregir ese punto.
+
+La configuración de instalación manual en `build/preseed.cfg` solicita las contraseñas durante el proceso; no contiene credenciales compartidas.
 
 ## Probar en QEMU (Consola y Visual)
 
@@ -48,4 +52,5 @@ qemu-system-i386 \
 El workflow en `.github/workflows/build-os.yml` compila los tres objetivos (`build-web-32bit`, `build-iso-64bit` y `build-normal-64bit`), sube los artefactos y publica las imágenes comprimidas (`.img.gz` / `.iso`) en la release `latest`.
 
 * Se ejecuta manualmente desde **Actions -> Run workflow** (`workflow_dispatch`).
-* También se dispara automáticamente al hacer `push` a `main` si cambian archivos en `build/**` o `.github/workflows/build-os.yml`.
+* También se dispara automáticamente al hacer `push` a `main` si cambian archivos en `build/**`, `wallpaper.png` o `.github/workflows/build-os.yml`.
+* La publicación `latest` solo ocurre cuando los tres trabajos de compilación terminan correctamente.
