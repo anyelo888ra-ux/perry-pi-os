@@ -292,7 +292,7 @@ jobs:
       - name: Instalar herramientas
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq debootstrap debian-archive-keyring grub-pc-bin parted dosfstools e2fsprogs curl
+          sudo apt-get install -y -qq debootstrap debian-archive-keyring grub-pc-bin parted dosfstools e2fsprogs curl librsvg2-bin
 
       - name: Construir perry-pi-os-normal-x64.img
         run: |
@@ -303,6 +303,13 @@ jobs:
           if [ ! -f "wallpaper.png" ]; then
             curl -fsSL "https://raw.githubusercontent.com/anyelo888ra-ux/perry-pi-os/main/wallpaper.png" -o wallpaper.png
           fi
+
+          mkdir -p wallpapers
+          cp wallpaper.png wallpapers/perry-original-v2.png
+          for svg in wallpapers/*.svg; do
+            name="$(basename "$svg" .svg)"
+            rsvg-convert -w 1920 -h 1080 "$svg" > "wallpapers/$name.png"
+          done
 
           cleanup() {
             set +e
@@ -335,7 +342,8 @@ jobs:
           done
 
           sudo mkdir -p mnt/usr/share/backgrounds/perry-pi-os mnt/usr/local/bin
-          sudo cp wallpaper.png mnt/usr/share/backgrounds/perry-pi-os/wallpaper.png
+          sudo cp wallpapers/*.png mnt/usr/share/backgrounds/perry-pi-os/
+          sudo cp wallpapers/perry-original-v2.png mnt/usr/share/backgrounds/perry-pi-os/wallpaper.png
 
           sudo cp build/yonata-welcome.py mnt/usr/local/bin/yonata-welcome.py
           sudo cp build/perry-explorer.py mnt/usr/local/bin/perry-explorer.py
@@ -390,7 +398,7 @@ jobs:
           Terminal=false
           DESKEOF
 
-          chmod +x /usr/local/bin/yonata-welcome.py /usr/local/bin/perry-explorer.py /usr/local/bin/perry-panel.py /home/perry-system/Desktop/Yonata.desktop
+          chmod +x /usr/local/bin/yonata-welcome.py /usr/local/bin/perry-explorer.py /usr/local/bin/perry-panel.py /usr/local/bin/perry-wallpaper.py /home/perry-system/Desktop/Yonata.desktop
           chown -R perry-system:perry-system /home/perry-system
 
           grub-install --target=i386-pc --boot-directory=/boot "$LOOP_DEV"
